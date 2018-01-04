@@ -8,10 +8,48 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
 ## Synopsis
 
 
 ## Data Processing & Exploratory Analysis
+
+```{r Get Packages, message=FALSE, warning=FALSE}
+# load packages
+library(dplyr)
+library(ggplot2)
+library(readr)
+
+
+```
+
+
+```{r Load Data, cache=TRUE}
+# load compressed data as tibble
+noaa <- read_csv("noaa_extreme_weather.csv.bz2")
+```
+
+
+```{r Clean Data, message=FALSE, warning=FALSE}
+## clean `EVTYPE` data
+# format all levels to uppercase (reduces levels by almost 100)
+noaa[, "EVTYPE"] <- toupper(noaa$EVTYPE)
+
+# correct mispellings
+
+# simplify categories
+blizzard <- sapply(as.character(noaa$EVTYPE), 
+                   function(x){grepl("^.*BLIZZARD.*$", x)})
+noaa[blizzard, "EVTYPE"] <- "BLIZZARD"
+
+hail <- sapply(as.character(noaa$EVTYPE), 
+                   function(x){grepl("^.*HAIL.*$", x)})
+noaa[hail, "EVTYPE"] <- "HAIL"
+
+# changes to feature classes
+noaa[, "EVTYPE"] <- as.factor(noaa$EVTYPE)
+```
+
 
 
 ## Main Analysis
