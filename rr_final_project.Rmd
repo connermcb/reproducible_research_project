@@ -1,0 +1,23 @@
+---
+title: "Health & Economic Consequences of Extreme Weather Events"
+author: "C. McBride"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+
+
+## Data Processing & Exploratory Analysis
+
+
+## Main Analysis
+
+
+## Results & Conclusions
+
+
+## Citations & Links
