@@ -243,6 +243,30 @@ ggplot(smry_dmgs)+
 
 ```
 
+```{r}
+## Prepare geographic plot
+# correct coordinate format
+# formatting functions
+frmt_lons <- function(x){ # formatting longitude values
+  x2 <- x%/%100 + x%%100/100
+  if(x2<0){
+    return(x2)
+  }else{
+    return(x2*-1)
+  }
+}
+
+frmt_lats <- function(x){
+  x%/%100 + x%%100/100
+}
+
+# Apply functions for coordinal data
+noaa_clean$LONGITUDE <- sapply(noaa_clean$LONGITUDE, frmt_lons) 
+noaa_clean$LATITUDE <- sapply(noaa_clean$LATITUDE, frmt_lats)
+```
+
+
+
 ## Main Analysis
 
 
