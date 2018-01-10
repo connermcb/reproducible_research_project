@@ -288,11 +288,15 @@ ggplot()+
   # Plot individual events
   geom_point(data=noaa_map_data, aes(x=LONGITUDE, y=LATITUDE, color=EVCAT),
              alpha=0.2, show.legend = FALSE)+
+  labs(title="Geographical Distribution of Costliest Events",
+       subtitle="(95% Quantile by Damage Costs)")+
   facet_wrap(~EVCAT, ncol=2)+
   theme(panel.background=element_blank(),
         axis.title = element_blank(),
         axis.text = element_blank(),
-        axis.ticks = element_blank())
+        axis.ticks = element_blank(),
+        plot.title = element_text(hjust=0.5),
+        plot.subtitle = element_text(hjust=0.5))
 ```
 
 
