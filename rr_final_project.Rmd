@@ -11,10 +11,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Synopsis
 
+This report explores the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm dataset, which tracks extreme weather events in the United States, including estimates of any fatalities, injuries, and property damage. These features will be focus of this report as events are ranked by the damage and casualties they inflict. The data themselves required extensive cleaning and reformatting. Most importantly the wide-ranging weather event types were gathered into general categories based on similar characteristics such as temperature, percipitation or variations in naming. The result were more interpretable data that I think supported more meaningful responses to the assignment questions.
+
 
 ## Data Processing & Exploratory Analysis
 
-```{r Get Packages, message=FALSE, warning=FALSE}
+```{r Get Packages, message=FALSE, warning=FALSE, echo=FALSE}
 # load packages
 library(dplyr)
 library(ggplot2)
@@ -27,13 +29,14 @@ library(scales)
 ```
 
 
-```{r Load Data, cache=TRUE, message=FALSE, warning=FALSE}
+```{r Load Data, cache=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
 # load compressed data as tibble
 noaa <- read_csv("noaa_extreme_weather.csv.bz2")
 ```
 
+After cataloging the multitude of weather event types, it seemed advisable not only to clean up that many disparities in the data but also gather the data into categories so that similar events could be examined and assessed collectively. Event types that were infrequent or didn't fit within the defined broader categories were eliminated; a threshold of 500 events per category or type was set.
 
-```{r Clean Data, message=FALSE, warning=FALSE}
+```{r Clean Data, message=FALSE, warning=FALSE, echo=FALSE}
 ## clean `EVTYPE` data
 # format all levels to uppercase (reduces unique levels by almost 100)
 noaa[, "EVTYPE"] <- toupper(noaa$EVTYPE)
@@ -138,8 +141,10 @@ noaa_clean <- noaa_clean[noaa_clean$EVCAT %in% names(freq_evts),]
 noaa_clean[, "EVCAT"] <- as.factor(noa_clean$EVCAT)
 ```
 
+Next, the data was grouped by category, and counts for fatalities and injuries were calculated. 
 
-```{r}
+
+```{r echo=FALSE}
 smry_fatals <- noaa_clean%>%
   group_by(EVCAT)%>%
   summarize(tot_fatals=sum(FATALITIES),
@@ -169,7 +174,9 @@ ggplot(smry_fatals)+
 
 ```
 
-```{r}
+After producing the summary of the casualties data, the analysis moved on to look at the cost in property damage caused by each event category. As a preliminary formatting step the existing base damage estimate was combined with its exponent counterpart to get an integer estimate of the damages caused by each event. At this point, anomalous values were removed from the dataset.
+
+```{r echo=FALSE}
 ## Calculate damages with PROPDMG and CROPDMG with their exponent variables
 # deal with NA's in exponent columns
 noaa_clean[is.na(noaa_clean$PROPDMGEXP), 'PROPDMGEXP'] <- "0"
@@ -218,7 +225,7 @@ smry_dmgs$EVCAT <- factor(smry_dmgs$EVCAT,
 ```
 
 
-```{r, error=FALSE, message=FALSE, warning=FALSE}
+```{r, error=FALSE, message=FALSE, warning=FALSE, echo=FALSE}
 ggplot(subset(smry_dmgs, type=="tot_prop"), aes(x=YEAR, y=value))+
   geom_line(aes(color=EVCAT), show.legend = FALSE, size=1)+
   labs(title="Trends in Property Damage by Event Category")+
@@ -245,7 +252,7 @@ ggplot(smry_dmgs)+
 
 ```
 
-```{r}
+```{r echo=FALSE}
 ## Prepare geographic plot
 # correct coordinate format
 # formatting functions
@@ -271,7 +278,7 @@ noaa_map_data <- subset(noaa_clean, (LATITUDE > 24.30 & LATITUDE < 49.40) &
                                     (LONGITUDE > -124.90 & LONGITUDE < -66.80))
 ```
 
-```{r}
+```{r echo=FALSE}
 # Get base map
 bs_map <- map_data("state")
 
@@ -289,7 +296,7 @@ ggplot()+
   geom_point(data=noaa_map_data, aes(x=LONGITUDE, y=LATITUDE, color=EVCAT),
              alpha=0.2, show.legend = FALSE)+
   labs(title="Geographical Distribution of Costliest Events",
-       subtitle="(95% Quantile by Damage Costs)")+
+       subtitle="(95% Quantile by Damage Costs Since 2000)")+
   facet_wrap(~EVCAT, ncol=2)+
   theme(panel.background=element_blank(),
         axis.title = element_blank(),
