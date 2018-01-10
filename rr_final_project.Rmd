@@ -263,6 +263,10 @@ frmt_lats <- function(x){
 # Apply functions for coordinal data
 noaa_clean$LONGITUDE <- sapply(noaa_clean$LONGITUDE, frmt_lons) 
 noaa_clean$LATITUDE <- sapply(noaa_clean$LATITUDE, frmt_lats)
+
+# Check coordinate values against bounding box of continental United states
+noaa_clean <- subset(noaa_clean, (LATITUDE > 24.30 & LATITUDE < 49.40) & 
+                                 (LONGITUDE > -124.90 & LONGITUDE < -66.80))
 ```
 
 
