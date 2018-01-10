@@ -213,6 +213,20 @@ smry_dmgs <- noaa_clean%>%
 smry_dmgs$EVCAT <- factor(smry_dmgs$EVCAT, 
                             levels=smry_dmgs$EVCAT[15:28])
 
+```
+
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+ggplot(subset(smry_dmgs, type=="tot_prop"), aes(x=YEAR, y=value))+
+  geom_line(aes(color=EVCAT), show.legend = FALSE, size=1)+
+  labs(title="Trends in Property Damage by Event Category")+
+  facet_wrap(~EVCAT, ncol=3, scales="fixed")+
+  theme(panel.background = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        plot.title = element_text(hjust=0.5),
+        panel.grid.major.x = element_line(color="grey90", size=0.5))
+
 ggplot(smry_dmgs)+
   geom_bar(aes(x=EVCAT, y=value, fill=type), 
            stat="identity", show.legend = FALSE)+
@@ -220,8 +234,7 @@ ggplot(smry_dmgs)+
              labeller = as_labeller(c(
                                       'tot_prop'="Total Property Damages",
                                       'tot_crop'="Total Crop Damages")
-                                    )
-             )+
+                                    ))+
   labs(title="Total Damages by Event Category", 
        y="Dollars")+
   theme(axis.text.x = element_text(hjust=1, angle=75),
