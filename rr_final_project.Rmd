@@ -19,6 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(ggplot2)
 library(gtable)
+library(lubridate)
 library(readr)
 library(reshape2)
 library(scales)
@@ -174,40 +175,55 @@ noaa_clean[is.na(noaa_clean$PROPDMGEXP), 'PROPDMGEXP'] <- "0"
 noaa_clean[is.na(noaa_clean$CROPDMGEXP), 'CROPDMGEXP'] <- "0"
 
 # Set up look-up list for transforming exponent variable to numerical
-dmg_exps <- list("K"=3, "M"=6, "B"=9, "m"=6, "h"=2, "H"=2)
+dmg_exps <- list("K"=3, "M"=6, "B"=9, "m"=6, "h"=2, "H"=2, "k"=3)
 
-# Deal with anomalous characters in PROPDMGEXP
+# Deal with anomalous characters in PROPDMGEXP and CROPDMGEXP
+noaa_clean[noaa_clean$PROPDMGEXP %in% c("+", "?", "-"),
+           'PROPDMGEXP'] <- "0"
+noaa_clean[noaa_clean$CROPDMGEXP %in% c("+", "?", "-"),
+           'CROPDMGEXP'] <- "0"
 
-
+# Transform letter exponent to number
 noaa_clean$PROPDMGEXP <- sapply(noaa_clean$PROPDMGEXP,
                                 function(e){
                                   ifelse(e %in% names(dmg_exps), 
                                          dmg_exps[[3]], as.numeric(e))
                                 })
 
+noaa_clean$CROPDMGEXP <- sapply(noaa_clean$CROPDMGEXP,
+                                function(e){
+                                  ifelse(e %in% names(dmg_exps), 
+                                         dmg_exps[[3]], as.numeric(e))
+                                })
+
+
+
 smry_dmgs <- noaa_clean%>%
-  group_by(EVCAT)%>%
-  summarize(tot_fatals=sum(FATALITIES),
-            tot_injuries=sum(INJURIES))%>%
-  filter(tot_fatals > 0 & tot_injuries > 0)%>%
-  melt(id.vars='EVCAT', measure.vars=c('tot_fatals', 'tot_injuries'),
-       variable.name="type", value.name = "value")%>%
+  mutate(PROPDMG_TOT=PROPDMG*10^PROPDMGEXP,
+         CROPDMG_TOT=CROPDMG*10^CROPDMGEXP,
+         YEAR=year(as.Date(BGN_DATE, format="%m/%d/%Y")))%>%
+  group_by(EVCAT, YEAR)%>%
+  summarize(tot_prop=sum(PROPDMG_TOT),
+            tot_crop=sum(CROPDMG_TOT))%>%
+  filter(tot_prop > 0 & tot_crop > 0)%>%
+  melt(id.vars=c('YEAR', 'EVCAT'), measure.vars=c('tot_prop', 'tot_crop'),
+       variable.name="type", value.name = "value")
   arrange(type, desc(value))
 
-smry_fatals$EVCAT <- factor(smry_fatals$EVCAT, 
-                            levels=smry_fatals$EVCAT[15:28])
+smry_dmgs$EVCAT <- factor(smry_dmgs$EVCAT, 
+                            levels=smry_dmgs$EVCAT[15:28])
 
-ggplot(smry_fatals)+
-  geom_bar(aes(x=EVCAT, y=log(value), fill=type), 
+ggplot(smry_dmgs)+
+  geom_bar(aes(x=EVCAT, y=value, fill=type), 
            stat="identity", show.legend = FALSE)+
   facet_wrap(~type, nrow=2, scales = "free_y", strip.position = "right",
              labeller = as_labeller(c(
-                                      'tot_fatals'="Fatalities",
-                                      'tot_injuries'="Injuries")
+                                      'tot_prop'="Total Property Damages",
+                                      'tot_crop'="Total Crop Damages")
                                     )
              )+
-  labs(title="Casualties by Event Category", 
-       y="Number of Casualties (log scale)")+
+  labs(title="Total Damages by Event Category", 
+       y="Dollars")+
   theme(axis.text.x = element_text(hjust=1, angle=75),
         axis.title.x = element_blank(),
         plot.title = element_text(hjust=0.5))
