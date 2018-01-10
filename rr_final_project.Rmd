@@ -18,13 +18,14 @@ knitr::opts_chunk$set(echo = TRUE)
 # load packages
 library(dplyr)
 library(ggplot2)
+library(gtable)
 library(readr)
-
-
+library(reshape2)
+library(scales)
 ```
 
 
-```{r Load Data, cache=TRUE}
+```{r Load Data, cache=TRUE, message=FALSE, warning=FALSE}
 # load compressed data as tibble
 noaa <- read_csv("noaa_extreme_weather.csv.bz2")
 ```
@@ -32,25 +33,186 @@ noaa <- read_csv("noaa_extreme_weather.csv.bz2")
 
 ```{r Clean Data, message=FALSE, warning=FALSE}
 ## clean `EVTYPE` data
-# format all levels to uppercase (reduces levels by almost 100)
+# format all levels to uppercase (reduces unique levels by almost 100)
 noaa[, "EVTYPE"] <- toupper(noaa$EVTYPE)
 
-# correct mispellings
+# remove summary categories, create dataframe copy
+noaa_clean <- noaa[!(grepl("^.*SUMMARY.*$", noaa$EVTYPE)),]
 
-# simplify categories
-blizzard <- sapply(as.character(noaa$EVTYPE), 
-                   function(x){grepl("^.*BLIZZARD.*$", x)})
-noaa[blizzard, "EVTYPE"] <- "BLIZZARD"
+## simplify categories
+# find and rename all extreme winter weather events (except snow) under one name
+cold <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*BLIZZARD.*$", x) |
+                               grepl("^.*WINT.*$", x) |
+                               grepl("^.*FREEZE.*$", x) |
+                               grepl("^.*COLD.*$", x) |
+                               grepl("^.*ICE.*$", x) |
+                               grepl("^.*SLEET.*$", x) |
+                               grepl("^.*ICY.*$", x)})
+noaa_clean[cold, "EVCAT"] <- "COLD"; rm(cold)
 
-hail <- sapply(as.character(noaa$EVTYPE), 
+# gather all variations of names for hail events under one level name
+hail <- sapply(as.character(noaa_clean$EVTYPE), 
                    function(x){grepl("^.*HAIL.*$", x)})
-noaa[hail, "EVTYPE"] <- "HAIL"
+noaa_clean[hail, "EVCAT"] <- "HAIL"; rm(hail)
+
+# all flood related extreme weather events under one level name
+flood <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*FLOOD.*$", x) |
+                               grepl("^.*TSUNAMI.*$", x) |
+                               grepl("^.*FLD.*$", x) |
+                               grepl("^.*HIGH TIDE.*$", x) |
+                               grepl("^.*SURF.*$", x) |
+                               grepl("^.*SEICHE.*$", x)})
+noaa_clean[flood, "EVCAT"] <- "FLOOD"; rm(flood)
+
+# all major oceanic storms under one level name
+hurricane <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*HURRICANE.*$", x) | 
+                               grepl("^.*TYPHOON.*$", x) |
+                               grepl("^.*TROPICAL.*$", x) |
+                               grepl("^.*SURGE.*$", x)})
+noaa_clean[hurricane, "EVCAT"] <- "HURRICANE"; rm(hurricane)
+
+# all thunderstorm and extreme rain under one level name
+tstorm <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*THUN.*$", x) | 
+                               grepl("^.*TSTM.*$", x) |
+                               grepl("^.*RAIN.*$", x) |
+                               grepl("^.*PRECIP.*", x)})
+noaa_clean[tstorm, "EVCAT"] <- "THUNDERSTORM"; rm(tstorm)
+
+# all extreme heat and drought events under one name
+heat_dry <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*DROUGHT.*$", x) | 
+                               grepl("^.*DRY.*$", x) |
+                               grepl("^.*HOT.*$", x) |
+                               grepl("^.*WARM.*$", x)} |
+                               grepl("^.*HEAT.*$", x))
+noaa_clean[heat_dry, "EVCAT"] <- "HEAT_DRY"; rm(heat_dry)
+
+# all tornado type events under one level name
+tornado <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*TORNAD.*$", x) |
+                               grepl("^.*SPOUT.*$", x) |
+                               grepl("^.*WHIRL.*$", x) |
+                               grepl("^.*FUNNEL.*$", x) |
+                               grepl("^.*ROTATING WALL CLOUD.*$", x) |
+                               grepl("^.*DUST DEVIL.*$", x)})
+noaa_clean[tornado, "EVCAT"] <- "TORNADO"; rm(tornado)
+
+# all extreme wind events (except tornadoes) under one level name
+wind <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*WIND.*$", x) |
+                               grepl("^.*BURST.*$", x) |
+                               grepl("^.*WHIRL.*$", x)})
+noaa_clean[wind, "EVCAT"] <- "WIND"; rm(wind)
+
+# all variations of snow under one level name
+snow <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*SNOW.*$", x)})
+noaa_clean[snow, "EVCAT"] <- "SNOW"; rm(snow)
+
+# all variations of wildfire descriptions under one level name
+fire <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*FIRE.*$", x) |
+                               grepl("^.*SMOKE.*$", x)})
+noaa_clean[fire, "EVCAT"] <- "FIRE"; rm(fire)
+
+# all variations of volcano under one level name
+volcano <- sapply(as.character(noaa_clean$EVTYPE), 
+                   function(x){grepl("^.*VOLCA.*$", x)})
+noaa_clean[volcano, "EVCAT"] <- "VOLCANO"; rm(volcano)
+
+# remove event types with small counts
+nas <- is.na(noaa_clean$EVCAT)
+noaa_clean$EVCAT[nas] <- noaa_clean$EVTYPE[nas]
+
+
+freq_evts <- table(noaa_clean$EVCAT)[table(noaa_clean$EVCAT) > 500]
+noaa_clean <- noaa_clean[noaa_clean$EVCAT %in% names(freq_evts),]
 
 # changes to feature classes
-noaa[, "EVTYPE"] <- as.factor(noaa$EVTYPE)
+noaa_clean[, "EVCAT"] <- as.factor(noa_clean$EVCAT)
 ```
 
 
+```{r}
+smry_fatals <- noaa_clean%>%
+  group_by(EVCAT)%>%
+  summarize(tot_fatals=sum(FATALITIES),
+            tot_injuries=sum(INJURIES))%>%
+  filter(tot_fatals > 0 & tot_injuries > 0)%>%
+  melt(id.vars='EVCAT', measure.vars=c('tot_fatals', 
+                                       'tot_injuries'),
+       variable.name="type", value.name = "value")%>%
+  arrange(type, desc(value))
+
+smry_fatals$EVCAT <- factor(smry_fatals$EVCAT, 
+                            levels=smry_fatals$EVCAT[15:28])
+
+ggplot(smry_fatals)+
+  geom_bar(aes(x=EVCAT, y=log(value), fill=type), 
+           stat="identity", show.legend = FALSE)+
+  facet_wrap(~type, nrow=3, scales = "free_y", strip.position = "right",
+             labeller = as_labeller(c(
+                                      'tot_fatals'="Fatalities",
+                                      'tot_injuries'="Injuries")
+                                    ))+
+  labs(title="Casualties by Event Category", 
+       y="Number of Casualties (log scale)")+
+  theme(axis.text.x = element_text(hjust=1, angle=75),
+        axis.title.x = element_blank(),
+        plot.title = element_text(hjust=0.5))
+
+```
+
+```{r}
+## Calculate damages with PROPDMG and CROPDMG with their exponent variables
+# deal with NA's in exponent columns
+noaa_clean[is.na(noaa_clean$PROPDMGEXP), 'PROPDMGEXP'] <- "0"
+noaa_clean[is.na(noaa_clean$CROPDMGEXP), 'CROPDMGEXP'] <- "0"
+
+# Set up look-up list for transforming exponent variable to numerical
+dmg_exps <- list("K"=3, "M"=6, "B"=9, "m"=6, "h"=2, "H"=2)
+
+# Deal with anomalous characters in PROPDMGEXP
+
+
+noaa_clean$PROPDMGEXP <- sapply(noaa_clean$PROPDMGEXP,
+                                function(e){
+                                  ifelse(e %in% names(dmg_exps), 
+                                         dmg_exps[[3]], as.numeric(e))
+                                })
+
+smry_dmgs <- noaa_clean%>%
+  group_by(EVCAT)%>%
+  summarize(tot_fatals=sum(FATALITIES),
+            tot_injuries=sum(INJURIES))%>%
+  filter(tot_fatals > 0 & tot_injuries > 0)%>%
+  melt(id.vars='EVCAT', measure.vars=c('tot_fatals', 'tot_injuries'),
+       variable.name="type", value.name = "value")%>%
+  arrange(type, desc(value))
+
+smry_fatals$EVCAT <- factor(smry_fatals$EVCAT, 
+                            levels=smry_fatals$EVCAT[15:28])
+
+ggplot(smry_fatals)+
+  geom_bar(aes(x=EVCAT, y=log(value), fill=type), 
+           stat="identity", show.legend = FALSE)+
+  facet_wrap(~type, nrow=2, scales = "free_y", strip.position = "right",
+             labeller = as_labeller(c(
+                                      'tot_fatals'="Fatalities",
+                                      'tot_injuries'="Injuries")
+                                    )
+             )+
+  labs(title="Casualties by Event Category", 
+       y="Number of Casualties (log scale)")+
+  theme(axis.text.x = element_text(hjust=1, angle=75),
+        axis.title.x = element_blank(),
+        plot.title = element_text(hjust=0.5))
+
+```
 
 ## Main Analysis
 
