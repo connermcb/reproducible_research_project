@@ -1,7 +1,9 @@
 ---
 title: "Health & Economic Consequences of Extreme Weather Events"
 author: "C. McBride"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -21,11 +23,13 @@ This report explores the U.S. National Oceanic and Atmospheric Administration's 
 library(dplyr)
 library(ggplot2)
 library(gtable)
+library(knitr)
 library(lubridate)
 library(maps)
 library(readr)
 library(reshape2)
 library(scales)
+library(stringi)
 ```
 
 
@@ -42,93 +46,65 @@ After cataloging the multitude of weather event types, it seemed advisable not o
 noaa[, "EVTYPE"] <- toupper(noaa$EVTYPE)
 
 # remove summary categories, create dataframe copy
-noaa_clean <- noaa[!(grepl("^.*SUMMARY.*$", noaa$EVTYPE)),]
+noaa_clean <- noaa[!(stri_detect_regex(noaa$EVTYPE, "SUMMARY", noaa$EVTYPE)),]
 
 ## simplify categories
 # find and rename all extreme winter weather events (except snow) under one name
-cold <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*BLIZZARD.*$", x) |
-                               grepl("^.*WINT.*$", x) |
-                               grepl("^.*FREEZE.*$", x) |
-                               grepl("^.*COLD.*$", x) |
-                               grepl("^.*ICE.*$", x) |
-                               grepl("^.*SLEET.*$", x) |
-                               grepl("^.*ICY.*$", x)})
+cold <- stri_detect_regex(as.character(noaa_clean$EVTYPE), 
+                          "(BLIZZARD|WINT|FREEZE|COLD|ICE|SLEET|ICY)")
 noaa_clean[cold, "EVCAT"] <- "COLD"; rm(cold)
 
 # gather all variations of names for hail events under one level name
-hail <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*HAIL.*$", x)})
+hail <- stri_detect_regex(as.character(noaa_clean$EVTYPE), "HAIL")
 noaa_clean[hail, "EVCAT"] <- "HAIL"; rm(hail)
 
 # all flood related extreme weather events under one level name
-flood <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*FLOOD.*$", x) |
-                               grepl("^.*TSUNAMI.*$", x) |
-                               grepl("^.*FLD.*$", x) |
-                               grepl("^.*HIGH TIDE.*$", x) |
-                               grepl("^.*SURF.*$", x) |
-                               grepl("^.*SEICHE.*$", x)})
+flood <- stri_detect_regex(as.character(noaa_clean$EVTYPE),
+                           "(FLOOD|TSUNAMI|FLD|HIGH TIDE|SURF|SEICHE)")
 noaa_clean[flood, "EVCAT"] <- "FLOOD"; rm(flood)
 
 # all major oceanic storms under one level name
-hurricane <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*HURRICANE.*$", x) | 
-                               grepl("^.*TYPHOON.*$", x) |
-                               grepl("^.*TROPICAL.*$", x) |
-                               grepl("^.*SURGE.*$", x)})
+hurricane <- stri_detect_regex(as.character(noaa_clean$EVTYPE),
+                               "(HURRICANE|TYPHOON |TROPICAL|SURGE)")
 noaa_clean[hurricane, "EVCAT"] <- "HURRICANE"; rm(hurricane)
 
 # all thunderstorm and extreme rain under one level name
-tstorm <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*THUN.*$", x) | 
-                               grepl("^.*TSTM.*$", x) |
-                               grepl("^.*RAIN.*$", x) |
-                               grepl("^.*PRECIP.*", x)})
+tstorm <- stri_detect_regex(as.character(noaa_clean$EVTYPE), 
+                            "(THUN| TSTM|RAIN|PRECIP)")
 noaa_clean[tstorm, "EVCAT"] <- "THUNDERSTORM"; rm(tstorm)
 
 # all extreme heat and drought events under one name
-heat_dry <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*DROUGHT.*$", x) | 
-                               grepl("^.*DRY.*$", x) |
-                               grepl("^.*HOT.*$", x) |
-                               grepl("^.*WARM.*$", x)} |
-                               grepl("^.*HEAT.*$", x))
+heat_dry <- stri_detect_regex(as.character(noaa_clean$EVTYPE), 
+                              "(DROUGHT|DRY|HOT|WARM|HEAT)")
 noaa_clean[heat_dry, "EVCAT"] <- "HEAT_DRY"; rm(heat_dry)
 
 # all tornado type events under one level name
-tornado <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*TORNAD.*$", x) |
-                               grepl("^.*SPOUT.*$", x) |
-                               grepl("^.*WHIRL.*$", x) |
-                               grepl("^.*FUNNEL.*$", x) |
-                               grepl("^.*ROTATING WALL CLOUD.*$", x) |
-                               grepl("^.*DUST DEVIL.*$", x)})
+tornado <- stri_detect_regex(as.character(noaa_clean$EVTYPE), 
+             ("TORNAD|SPOUT|WHIRL|FUNNEL|ROTATING WALL CLOUD|DUST DEVIL"))
 noaa_clean[tornado, "EVCAT"] <- "TORNADO"; rm(tornado)
 
 # all extreme wind events (except tornadoes) under one level name
-wind <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*WIND.*$", x) |
-                               grepl("^.*BURST.*$", x) |
-                               grepl("^.*WHIRL.*$", x)})
+wind <- stri_detect_regex(as.character(noaa_clean$EVTYPE), 
+                          "(WIND|BURST|WHIRL)")
 noaa_clean[wind, "EVCAT"] <- "WIND"; rm(wind)
 
 # all variations of snow under one level name
-snow <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*SNOW.*$", x)})
+snow <- stri_detect_regex(as.character(noaa_clean$EVTYPE), 
+                          "SNOW")
 noaa_clean[snow, "EVCAT"] <- "SNOW"; rm(snow)
 
 # all variations of wildfire descriptions under one level name
-fire <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*FIRE.*$", x) |
-                               grepl("^.*SMOKE.*$", x)})
+fire <- stri_detect_regex(as.character(noaa_clean$EVTYPE), 
+                          "(FIRE|SMOKE)")
 noaa_clean[fire, "EVCAT"] <- "FIRE"; rm(fire)
 
 # all variations of volcano under one level name
-volcano <- sapply(as.character(noaa_clean$EVTYPE), 
-                   function(x){grepl("^.*VOLCA.*$", x)})
+volcano <- stri_detect_regex(as.character(noaa_clean$EVTYPE), 
+                             "VOLCA")
 noaa_clean[volcano, "EVCAT"] <- "VOLCANO"; rm(volcano)
+```
 
+```{r}
 # remove event types with small counts
 nas <- is.na(noaa_clean$EVCAT)
 noaa_clean$EVCAT[nas] <- noaa_clean$EVTYPE[nas]
@@ -138,7 +114,7 @@ freq_evts <- table(noaa_clean$EVCAT)[table(noaa_clean$EVCAT) > 500]
 noaa_clean <- noaa_clean[noaa_clean$EVCAT %in% names(freq_evts),]
 
 # changes to feature classes
-noaa_clean[, "EVCAT"] <- as.factor(noa_clean$EVCAT)
+noaa_clean[, "EVCAT"] <- as.factor(noaa_clean$EVCAT)
 ```
 
 Next, the data was grouped by category, and counts for fatalities and injuries were calculated. 
@@ -203,29 +179,27 @@ noaa_clean$CROPDMGEXP <- sapply(noaa_clean$CROPDMGEXP,
                                   ifelse(e %in% names(dmg_exps), 
                                          dmg_exps[[3]], as.numeric(e))
                                 })
-
+# Perform exponent calculations, assign full cost value back to PROPDMG, CROPDMG
 noaa_clean <- noaa_clean%>%
   mutate(PROPDMG_TOT=PROPDMG*10^PROPDMGEXP,
          CROPDMG_TOT=CROPDMG*10^CROPDMGEXP,
          YEAR=year(as.Date(BGN_DATE, format="%m/%d/%Y")))
+```
 
-
+```{r echo=FALSE}
+# Group data by event category and year, summarize by property and crop totals
 smry_dmgs <- noaa_clean%>%
   group_by(EVCAT, YEAR)%>%
   summarize(tot_prop=sum(PROPDMG_TOT),
             tot_crop=sum(CROPDMG_TOT))%>%
   filter(tot_prop > 0 & tot_crop > 0)%>%
-  melt(id.vars=c('YEAR', 'EVCAT'), measure.vars=c('tot_prop', 'tot_crop'),
+  melt(id.vars=c('EVCAT', 'YEAR'), measure.vars=c('tot_prop', 'tot_crop'),
        variable.name="type", value.name = "value")
-  arrange(type, desc(value))
-
-smry_dmgs$EVCAT <- factor(smry_dmgs$EVCAT, 
-                            levels=smry_dmgs$EVCAT[15:28])
-
 ```
 
 
 ```{r, error=FALSE, message=FALSE, warning=FALSE, echo=FALSE}
+# Time series line plot of property damages facet by category
 ggplot(subset(smry_dmgs, type=="tot_prop"), aes(x=YEAR, y=value))+
   geom_line(aes(color=EVCAT), show.legend = FALSE, size=1)+
   labs(title="Trends in Property Damage by Event Category")+
@@ -235,28 +209,13 @@ ggplot(subset(smry_dmgs, type=="tot_prop"), aes(x=YEAR, y=value))+
         axis.ticks.y = element_blank(),
         plot.title = element_text(hjust=0.5),
         panel.grid.major.x = element_line(color="grey90", size=0.5))
-
-ggplot(smry_dmgs)+
-  geom_bar(aes(x=EVCAT, y=value, fill=type), 
-           stat="identity", show.legend = FALSE)+
-  facet_wrap(~type, nrow=2, scales = "free_y", strip.position = "right",
-             labeller = as_labeller(c(
-                                      'tot_prop'="Total Property Damages",
-                                      'tot_crop'="Total Crop Damages")
-                                    ))+
-  labs(title="Total Damages by Event Category", 
-       y="Dollars")+
-  theme(axis.text.x = element_text(hjust=1, angle=75),
-        axis.title.x = element_blank(),
-        plot.title = element_text(hjust=0.5))
-
 ```
 
 ```{r echo=FALSE}
 ## Prepare geographic plot
 # correct coordinate format
-# formatting functions
-frmt_lons <- function(x){ # formatting longitude values
+# format longitude values
+frmt_lons <- function(x){ 
   x2 <- x%/%100 + x%%100/100
   if(x2<0){
     return(x2)
@@ -265,7 +224,8 @@ frmt_lons <- function(x){ # formatting longitude values
   }
 }
 
-frmt_lats <- function(x){
+# format latitude values
+frmt_lats <- function(x){ 
   x%/%100 + x%%100/100
 }
 
@@ -273,7 +233,7 @@ frmt_lats <- function(x){
 noaa_clean$LONGITUDE <- sapply(noaa_clean$LONGITUDE, frmt_lons) 
 noaa_clean$LATITUDE <- sapply(noaa_clean$LATITUDE, frmt_lats)
 
-# Check coordinate values against bounding box of continental United states
+# Further subset coordinate values against bounding box of continental US
 noaa_map_data <- subset(noaa_clean, (LATITUDE > 24.30 & LATITUDE < 49.40) & 
                                     (LONGITUDE > -124.90 & LONGITUDE < -66.80))
 ```
@@ -314,4 +274,12 @@ ggplot()+
 ## Results & Conclusions
 
 
+
+
 ## Citations & Links
+
+## Appendix: Code
+
+```{r code=readLines(knitr::purl('final_project.Rmd', documentation = 0)), eval = FALSE}
+
+```
