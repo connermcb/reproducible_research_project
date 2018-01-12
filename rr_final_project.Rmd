@@ -1,5 +1,5 @@
 ---
-title: "Health & Economic Consequences of Extreme Weather Events"
+title: "Health & Economic Outcomes of Severe Weather Events"
 author: "C. McBride"
 output:
   pdf_document: default
@@ -14,10 +14,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Synopsis
 
-This report explores the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm dataset, which tracks extreme weather events in the United States, including estimates of any fatalities, injuries, and property damage. These features will be focus of this report as events are ranked by the damage and casualties they inflict. The data themselves required extensive cleaning and reformatting. Most importantly the wide-ranging weather event types were gathered into general categories based on similar characteristics such as temperature, percipitation or variations in naming. The result were more interpretable data that I think supported more meaningful responses to the assignment questions.
+This report explores the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm dataset, which tracks extreme weather events in the United States, including estimates of any fatalities, injuries, and property damage. These features will be the focus of this report by ranking categories of sever weather events by their consequent material damage and human casualties. 
+
+The data themselves required extensive cleaning and reformatting. Most importantly, the wide-ranging weather event types were gathered into general categories based on similar characteristics such as temperature, percipitation type, storm variety or variations in event naming. The result were more interpretable data that I think supported more meaningful responses to the assignment questions.
+
+While all event categories registered significant and impacts, the events that caused the greatest loss in both terms of life and property were hurricanes, tornados and flooding.
 
 
 ## Data Processing & Exploratory Analysis
+
+__Step 1:__ The requisite libraries are loaded to facilitate analysis and data munging. 
 
 ```{r Get Packages, message=FALSE, warning=FALSE}
 # load packages
@@ -33,13 +39,17 @@ library(scales)
 library(stringi)
 ```
 
+__Step 2:__ The dataset is loaded into the working environment and all possible values of `EVTYPE` are catalogued.
 
 ```{r Load Data, message=FALSE, warning=FALSE}
 # load compressed data as tibble
 noaa <- read_csv("noaa_extreme_weather.csv.bz2")
+
+# get domain of severe weather events
+unique(noaa$EVTYPE)
 ```
 
-After cataloging the multitude of weather event types, it seemed advisable not only to clean up that many disparities in the data but also gather the data into categories so that similar events could be examined and assessed collectively. Event types that were infrequent or didn't fit within the defined broader categories were eliminated; a threshold of 500 events per category or type was set.
+__Step 3:__ After informally cataloging the multitude of weather event types (using `table(noaa$EVTYPE)`), it seemed advisable not only to clean up the many errors and disparities in the data but also gather the data into categories so that similar events could be examined and assessed collectively. The reasoning here was that similar events often develop under similar conditions and share a profile in terms of damages. 
 
 ```{r Clean Data, message=FALSE, warning=FALSE}
 ## clean `EVTYPE` data
@@ -106,12 +116,15 @@ fog<- stri_detect_regex(as.character(noaa_clean$EVTYPE), "FOG")
 noaa_clean[fog, "EVCAT"] <- "FOG"; rm(fog)
 ```
 
+__Step 4:__ Event types that were infrequent or didn't fit within the defined broader categories were eliminated, and event types and categories that were infrequently represented (n < 500) over the whole timespan of the data were not included.
+
 ```{r}
-# remove event types with small counts
+# assign EVTYPE value to EVCAT for those event types that weren't grouped under
+# a larger category in previous step
 nas <- is.na(noaa_clean$EVCAT)
 noaa_clean$EVCAT[nas] <- noaa_clean$EVTYPE[nas]
 
-
+# remove most infrequent categories
 freq_evts <- table(noaa_clean$EVCAT)[table(noaa_clean$EVCAT) > 500]
 noaa_clean <- noaa_clean[noaa_clean$EVCAT %in% names(freq_evts),]
 
@@ -119,10 +132,10 @@ noaa_clean <- noaa_clean[noaa_clean$EVCAT %in% names(freq_evts),]
 noaa_clean[, "EVCAT"] <- as.factor(noaa_clean$EVCAT)
 ```
 
-Next, the data was grouped by category, and counts for fatalities and injuries were calculated. 
-
+__Step 5:__ Next, the data was grouped by category, and counts for fatalities and injuries were calculated. 
 
 ```{r}
+# group data by EVCAT and get total fatalities, injuries for each category
 smry_fatals <- noaa_clean%>%
   group_by(EVCAT)%>%
   summarize(tot_fatals=sum(FATALITIES),
@@ -132,11 +145,15 @@ smry_fatals <- noaa_clean%>%
        variable.name="type", value.name = "value")%>%
   arrange(type, desc(value))
 
+# Change levle order in prep for sorted bar plot
 smry_fatals$EVCAT <- factor(smry_fatals$EVCAT, 
                             levels=smry_fatals$EVCAT[14:26])
 ```
 
+__Step 6:__ Using the grouped and summarized data, a bar plot is made comparing the two classes of casualties by event category.
+
 ```{r}
+# bar plot of fatalities and injuries by event category
 ggplot(smry_fatals)+
   geom_bar(aes(x=EVCAT, y=log(value), fill=type), 
            stat="identity", show.legend = FALSE)+
@@ -153,7 +170,7 @@ ggplot(smry_fatals)+
 
 ```
 
-After producing the summary of the casualties data, the analysis moved on to look at the cost in property damage caused by each event category. As a preliminary formatting step the existing base damage estimate was combined with its exponent counterpart to get an integer estimate of the damages caused by each event. At this point, anomalous values were removed from the dataset.
+__Step 7:__ After producing the summary of the casualties data, the analysis moved on to look at the cost in property damage caused by each event category. As a preliminary formatting step the existing base damage estimate was combined with its exponent counterpart to get an integer estimate of the damages caused by each event. At this point, anomalous values were removed from the dataset.
 
 ```{r}
 ## Calculate damages with PROPDMG and CROPDMG with their exponent variables
@@ -189,6 +206,8 @@ noaa_clean <- noaa_clean%>%
          YEAR=year(as.Date(BGN_DATE, format="%m/%d/%Y")))
 ```
 
+__Step 8:__ Next, the same grouping and summarizing is performed on the data this time grouping the data by EVCAT and YEAR and getting the mean property and crop damage.
+
 ```{r}
 # Group data by event category and year, summarize by property and crop totals
 smry_dmgs <- noaa_clean%>%
@@ -201,12 +220,14 @@ smry_dmgs <- noaa_clean%>%
   arrange(type, desc(value))
 
 ```
-
+ 
+__Step 9:__ The data are plotted in a time-series line graph faceted over event category. A log-scale is applied to the y-value, otherwise outlying peak values in some of the categories, specifically `HURRICANE` and `FLOOD`, exaggerate the range of the y-scale.  
 
 ```{r error=FALSE, message=FALSE, warning=FALSE}
 # Time series line plot of property damages facet by category
-ggplot(subset(smry_dmgs, type=="tot_prop"), aes(x=YEAR, y=log(value)))+
-  geom_line(stat="identity", show.legend = FALSE)+
+ggplot(subset(smry_dmgs, type=="tot_prop"))+
+  geom_line(aes(x=YEAR, y=log(value), color=EVCAT),
+            stat="identity", show.legend = FALSE)+
   labs(title="Mean Property Damage Trends by Year and Event Category",
        y="Dollars (log scale)")+
   facet_wrap(~EVCAT, ncol=3, scales="fixed")+
@@ -217,17 +238,7 @@ ggplot(subset(smry_dmgs, type=="tot_prop"), aes(x=YEAR, y=log(value)))+
         panel.grid.major = element_line(color="grey95"))
 ```
 
-```{r}
-smry_dmgs <- smry_dmgs%>%
-  arrange(type, value)
-
-ggplot(subset(smry_dmgs, type=="tot_prop"), 
-       aes(x=EVCAT, y=log(value)))+
-  geom_bar(stat = "sum")+
-  theme(axis.text.x = element_text(hjust=1, angle = 75))
-```
-
-
+__Step 10:__ To prepare for a plot in geographical space, the coordinate values were cleaned and formatted. Although the data includes events from US territories and the two states outside the contiguous US, the data was further subsetted on the lower 48 states. 
 
 ```{r}
 ## Prepare geographic plot
@@ -255,6 +266,8 @@ noaa_clean$LATITUDE <- sapply(noaa_clean$LATITUDE, frmt_lats)
 noaa_map_data <- subset(noaa_clean, (LATITUDE > 24.30 & LATITUDE < 49.40) & 
                                     (LONGITUDE > -124.90 & LONGITUDE < -66.80))
 ```
+
+__Step 11:__ The location of instances of the most frequent categories are geographically plotted. Because of the sheer number of events in each category and to make the plot readable, only the top 95% quantile is plotted.
 
 ```{r}
 # Get base map
@@ -285,11 +298,8 @@ ggplot()+
 ```
 
 
-
-## Main Analysis
-
-
 ## Results & Conclusions
+
 
 
 
