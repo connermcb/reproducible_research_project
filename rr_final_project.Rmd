@@ -2,6 +2,7 @@
 title: "Health & Economic Consequences of Extreme Weather Events"
 author: "C. McBride"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
