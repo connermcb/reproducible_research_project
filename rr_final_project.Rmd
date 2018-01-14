@@ -21,12 +21,6 @@ The data themselves required extensive cleaning and reformatting. Most important
 While all event categories registered significant and impacts, the events that caused the greatest loss in both terms of life and property were hurricanes, tornados and flooding.
 
 
-## Results & Conclusions
-
-What stood out most in the analysis of the casualties and damages data was incredibly high material cost associated with severe weather, both summatively and by individual event category. I was incredulous (and still am to some degree) with the summaries the analysis produced since the annual damages sometimes reach into the trillions of dollars.
-
-Fortunately, the injuries and loss of life figures did not seem as inflated as the material losses. While some particular events, such as major hurricanes caused noticeable spikes in the data, the mean casualty rate for most of the generated event categories was around 1.
-
 ## Data Processing & Exploratory Analysis
 
 __Step 1:__ The requisite libraries are loaded to facilitate analysis and data munging. 
@@ -213,7 +207,33 @@ noaa_clean <- noaa_clean%>%
          YEAR=year(as.Date(BGN_DATE, format="%m/%d/%Y")))
 ```
 
-__Step 8:__ Next, the same grouping and summarizing is performed on the data this time grouping the data by EVCAT and YEAR and getting the mean property and crop damage.
+
+__Step 8:__ A quick summary to test for outliers.
+
+```{r}
+noaa_clean%>%
+  group_by(EVCAT)%>%
+  summarize(
+            mean=mean(PROPDMG_TOT),
+            median=median(PROPDMG_TOT),
+            third_qrt=quantile(PROPDMG_TOT, .75), 
+            max=max(PROPDMG_TOT))
+
+```
+
+Most of the max values deserve some attention event category by category. In the case of `COLD`, the max value for `PROPDMG_TOT` of $5 billion doesn't seem impossible since the event in question was described as the ["Storm of the Century" or the "Blizzard of 1993"][1] in popular culture and categorized as a category 5 storm meteorologically. 
+
+The costliest fire likewise turns out not to be a data error. The [Cerro Grande Fire][2] in northern New Mexico along with other fires across the state caused widespread damage worth over a billion dollars.
+
+The damages caused by a severe hail storm in October of 2010 in Phoenix, Arizona caused close to $2 billion in damages.
+
+The maximum value for `THUNDERSTORM` is probably better moved to the flood category. 
+
+The billion dollar damages recorded for the top tornado belonged to a tornado that tore through Joplin, Missouri.
+
+The maximimum value for `WIND` is actually another instance, albeit geographically unique, for the ["Storm of the Century"][1]. Many of the other extreme property damages value for this category are attributalbe to hurricanes.
+
+__Step 9:__ Next, the same grouping and summarizing is performed on the data this time grouping the data by EVCAT and YEAR and getting the mean property and crop damage.
 
 ```{r}
 # Group data by event category and year, summarize by property and crop totals
@@ -228,7 +248,7 @@ smry_dmgs <- noaa_clean%>%
 
 ```
  
-__Step 9:__ The data are plotted in a time-series line graph faceted over event category. A log-scale is applied to the y-value, otherwise outlying peak values in some of the categories, specifically `HURRICANE` and `FLOOD`, exaggerate the range of the y-scale.  
+__Step 10:__ The data are plotted in a time-series line graph faceted over event category. A log-scale is applied to the y-value, otherwise outlying peak values in some of the categories, specifically `HURRICANE` and `FLOOD`, exaggerate the range of the y-scale.  
 
 ```{r error=FALSE, message=FALSE, warning=FALSE}
 # Time series line plot of property damages facet by category
@@ -245,7 +265,7 @@ plot_2 <- ggplot(subset(smry_dmgs, type=="tot_prop"))+
         panel.grid.major = element_line(color="grey95"))
 ```
 
-__Step 10:__ To prepare for a plot in geographical space, the coordinate values were cleaned and formatted. Although the data includes events from US territories and the two states outside the contiguous US, the data was further subsetted on the lower 48 states. 
+__Step 11:__ To prepare for a plot in geographical space, the coordinate values were cleaned and formatted. Although the data includes events from US territories and the two states outside the contiguous US, the data was further subsetted on the lower 48 states. 
 
 ```{r}
 ## Prepare geographic plot
@@ -274,7 +294,7 @@ noaa_map_data <- subset(noaa_clean, (LATITUDE > 24.30 & LATITUDE < 49.40) &
                                     (LONGITUDE > -124.90 & LONGITUDE < -66.80))
 ```
 
-__Step 11:__ The location of instances of the most frequent categories are geographically plotted. Because of the sheer number of events in each category and to make the plot readable, only the top 95% quantile is plotted.
+__Step 12:__ The location of instances of the most frequent categories are geographically plotted. Because of the sheer number of events in each category and to make the plot readable, only the top 95% quantile is plotted.
 
 ```{r}
 # Get base map
@@ -305,6 +325,29 @@ plot_3 <- ggplot()+
 ```
 
 
+## Results & Conclusions
+
+The first research question was answered visually by plotting the aggregate casualty figures per generated category. The values for the most deadly weather categories so exaggerated the y-axis that a log-scale was used so that the bars for the other categries would be apparent. The most deadly categories of severe weather were tornadoes, perhaps because they are largely unpredictable both in terms of occurrence and location besides being so destructive. Other very deadly weather categories included flooding, extremely dry and hot weather, along with strong wind. The plot below compares the deadliness of severe weather categories both in terms of fatalities and injuries. 
+
+```{r echo=FALSE}
+plot_1
+```
+
+```{r echo=FALSE}
+plot_2
+
+plot(log(noaa_clean[-604411,]$PROPDMG_TOT+noaa_clean[-604411,]$CROPDMG_TOT), col=noaa_clean[-604411,]$EVCAT)
+
+  
+```
+
+
+What stood out most in the analysis of the casualties and damages data was incredibly high material cost associated with severe weather, both summatively and by individual event category. I was incredulous (and still am to some degree) with the summaries the analysis produced since the aggregate annual damages sometimes reach into the trillions of dollars.
+
+Fortunately, the injuries and loss of life figures did not seem as inflated as the material losses. While some particular events, such as major hurricanes caused noticeable spikes in the data, the mean casualty rate for most of the generated event categories was around one.
+
 ## Citations & Links
 
+[1]: https://en.wikipedia.org/wiki/1993_Storm_of_the_Century
 
+[2]: https://en.wikipedia.org/wiki/Cerro_Grande_Fire
