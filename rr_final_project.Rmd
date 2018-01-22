@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Synopsis
 
-This report explores the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm dataset, which tracks extreme weather events in the United States, including estimates of any fatalities, injuries, and property damage. These features will be the focus of this report by ranking categories of sever weather events by their consequent material damage and human casualties. 
+This report explores the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm dataset, which tracks extreme weather events in the United States, including estimates of any fatalities, injuries, and property damage. These features will be the focus of this report by ranking categories of severe weather events by their consequential material damage and human casualties. 
 
 The data themselves required extensive cleaning and reformatting. Most importantly, the wide-ranging weather event types were gathered into general categories based on similar characteristics such as temperature, percipitation type, storm variety or variations in event naming. The result were more interpretable data that I think supported more meaningful responses to the assignment questions.
 
@@ -22,6 +22,8 @@ While all event categories registered significant and impacts, the events that c
 
 
 ## Data Processing & Exploratory Analysis
+
+The data, in particular the principle variable of interest `EVTYPE`, were inconsistent in their formatting. To correct these inconsistencies in preparation for plotting and addressing the research questions, a series of munging steps were implemented.
 
 __Step 1:__ The requisite libraries are loaded to facilitate analysis and data munging. 
 
@@ -53,7 +55,7 @@ length(unq)
 head(unq)
 ```
 
-__Step 3:__ After informally cataloging the multitude of weather event types (using `table(noaa$EVTYPE)`), it seemed advisable not only to clean up the many errors and disparities in the data but also gather the data into categories so that similar events could be examined and assessed collectively. The reasoning here was that similar events often develop under similar conditions and share a profile in terms of damages. 
+__Step 3:__ After informally cataloging the multitude of weather event types (using `table(noaa$EVTYPE)`), it is advisable not only to clean up the many errors and disparities in the data but also gather the data into categories so that similar events could be examined and assessed collectively. The reasoning here was that similar events often develop under similar conditions and share a profile in terms of damages, for example flooding from heavy rain and flooding from storm surge. To accomplish this, several grouping functions were implemented that rely on regular expressions.
 
 ```{r Clean Data, message=FALSE, warning=FALSE}
 ## clean `EVTYPE` data
@@ -120,7 +122,7 @@ fog<- stri_detect_regex(as.character(noaa_clean$EVTYPE), "FOG")
 noaa_clean[fog, "EVCAT"] <- "FOG"; rm(fog)
 ```
 
-__Step 4:__ Event types that were infrequent or didn't fit within the defined broader categories were eliminated, and event types and categories that were infrequently represented (n < 500) over the whole timespan of the data were not included.
+__Step 4:__ Event types that were infrequent or didn't fit within the defined broader categories were eliminated, and event types and categories that were infrequently represented (n < 500) over the entire timespan of the data were not included. 
 
 ```{r}
 # assign EVTYPE value to EVCAT for those event types that weren't grouped under
@@ -145,6 +147,8 @@ noaa_clean <- noaa_clean%>%
 
 ```
 
+__Step 6:__ To facilitate subsetting the data on the particular dates of exceptional events such as large hurricanes, the date fields `BGN_DATE` and `END_DATE` are transformed form character objects to Date objects.
+
 ```{r Format Dates, warning=FALSE, message=FALSE}
 # transform date variable from character class to Date class
 noaa_clean <- noaa_clean%>%
@@ -152,32 +156,137 @@ noaa_clean <- noaa_clean%>%
          END_DATE=as.Date(END_DATE, format="%m/%d/%Y %H:%M:%S"))
 ```
 
+__Step 7:__ To facilitate geographic plotting, a couple of transformations are made to the data. To be able to plot with choropleths, a variable with the full state name in all lower case is added to the data.
+
+```{r Add full state name, message=FALSE, warning=FALSE}
+# Use STATE to create feature with full state name
+noaa_clean <- noaa_clean%>%
+  mutate(STATENAME=tolower(state.name[match(STATE, state.abb)]))
+  
+```
+
+In addition, the coordinate values, `LONGITUDE` and `LATITUDE` are cleaned and formatted. Although the data includes events from US territories and the two states outside the contiguous US, the data was further subsetted on the lower 48 states. 
+
+```{r}
+## Prepare geographic plot
+# correct coordinate format
+# format longitude values
+frmt_lons <- function(x){ 
+  x2 <- x%/%100 + x%%100/100
+  if(x2<0){
+    return(x2)
+  }else{
+    return(x2*-1)
+  }
+}
+
+# format latitude values
+frmt_lats <- function(x){ 
+  x%/%100 + x%%100/100
+}
+
+# Apply functions for coordinal data
+noaa_clean$LONGITUDE <- sapply(noaa_clean$LONGITUDE, frmt_lons) 
+noaa_clean$LATITUDE <- sapply(noaa_clean$LATITUDE, frmt_lats)
+
+# Further subset coordinate values against bounding box of continental US
+noaa_clean <- subset(noaa_clean, STATE %in% state.abb)
+```
 
 
-```{r warning=FALSE}
+__Step 8:__ As a preliminary formatting step for examining material damage, an integer estimate of the damages caused by each event is calculated using the base and exponent variable. Observations with anomalous values (e.g. `PROGDMGEXP`="?")  are removed from the dataset.
+
+
+```{r}
+## Calculate damages with PROPDMG and CROPDMG with their exponent variables
+# deal with NA's in exponent columns
+noaa_clean[is.na(noaa_clean$PROPDMGEXP), 'PROPDMGEXP'] <- "0"
+noaa_clean[is.na(noaa_clean$CROPDMGEXP), 'CROPDMGEXP'] <- "0"
+
+# Set up look-up list for transforming exponent variable to numerical
+dmg_exps <- list("K"=3, "M"=6, "B"=9, "m"=6, "h"=2, "H"=2, "k"=3)
+
+# Deal with anomalous characters in PROPDMGEXP and CROPDMGEXP
+noaa_clean[noaa_clean$PROPDMGEXP %in% c("+", "?", "-"),
+           'PROPDMGEXP'] <- "0"
+noaa_clean[noaa_clean$CROPDMGEXP %in% c("+", "?", "-"),
+           'CROPDMGEXP'] <- "0"
+
+# Transform letter exponent to number
+noaa_clean$PROPDMGEXP <- sapply(noaa_clean$PROPDMGEXP,
+                                function(e){
+                                  ifelse(e %in% names(dmg_exps), 
+                                         dmg_exps[[e]], as.numeric(e))
+                                })
+
+noaa_clean$CROPDMGEXP <- sapply(noaa_clean$CROPDMGEXP,
+                                function(e){
+                                  ifelse(e %in% names(dmg_exps), 
+                                         dmg_exps[[e]], as.numeric(e))
+                                })
+# Perform exponent calculations, assign full cost value back to PROPDMG, CROPDMG
+noaa_clean <- noaa_clean%>%
+  mutate(PROPDMG_TOT=PROPDMG*10^PROPDMGEXP,
+         CROPDMG_TOT=CROPDMG*10^CROPDMGEXP,
+         YEAR=year(as.Date(BGN_DATE, format="%m/%d/%Y")))
+```
+
+__Step 9:__ Because some the data look extreme, a quick summary to test for outliers.
+
+```{r message=FALSE, warning=FALSE}
+# Get quantile summaries of damages by event category
+qnt_smry <- noaa_clean%>%
+  group_by(EVCAT)%>%
+  summarize(
+            mean=mean(PROPDMG_TOT),
+            median=median(PROPDMG_TOT),
+            third_qrt=quantile(PROPDMG_TOT, .75), 
+            max=max(PROPDMG_TOT))
+
+# summaries table
+kable(qnt_smry)
+
+```
+
+Most of the max values deserve some attention event category by category. In the case of `COLD`, the max value for `PROPDMG_TOT` of $5 billion doesn't seem impossible since the event in question was described as the ["Storm of the Century" or the "Blizzard of 1993"][1] in popular culture and categorized as a category 5 storm meteorologically. 
+
+The costliest fire likewise turns out not to be a data error. The [Cerro Grande Fire][2] in northern New Mexico along with other fires across the state caused widespread damage worth over a billion dollars.
+
+The damages caused by a severe hail storm in October of 2010 in Phoenix, Arizona caused close to $2 billion in damages.
+
+The maximum value for `THUNDERSTORM` is probably better moved to the flood category. 
+
+The billion dollar damages recorded for the top tornado belonged to a tornado that tore through Joplin, Missouri.
+
+The maximimum value for `WIND` is actually another instance, albeit geographically unique, for the ["Storm of the Century"][1]. Many of the other extreme property damages value for this category are attributalbe to hurricanes.
+
+```{r warning=FALSE, message=FALSE}
 # summarize data for test plot
 katrina_flood <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("2005-08-22") &
          END_DATE <= as.Date("2005-09-01") &
-         EVCAT=="FLOOD")%>%
-  group_by(STATENAME)%>%
+         grepl("Z.*[>-]", COUNTYNAME))
+  group_by(FIPS)%>%
   summarise(value=log(sum(PROPDMG_TOT)+1))
+
 
 names(katrina_flood)[1] <- "region"
 
 
 # test plot of FIPS data
-katrina_flood <- StateChoropleth$new(katrina_flood)
+katrina_flood <- CountyChoropleth$new(katrina_flood)
 katrina_flood$set_num_colors(5)
 katrina_flood$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
 katrina_flood$set_zoom(c("alabama", "louisiana", "mississippi", "tennessee", "kentucky"))
 
 
-kat_plt1 <- katrina_flood$render_with_reference_map()+
-  geom_path(data=kat_path, mapping=aes(lon*-1, lat), size=2, color="grey50",
-            linetype=2, alpha=.5, show.legend = FALSE)+
+katrina_flood$render_with_reference_map()
+plot(pfz_la, col=pfz_la$COLOR)
+  # geom_path(data=kat_path, mapping=aes(lon*-1, lat), size=2, color="grey50",
+  #           linetype=2, alpha=.5, show.legend = FALSE)+
   labs(caption="Flood Related")+
   theme(plot.caption = element_text(hjust = 0.5, size=14))
+  # plot(pfz_la, col=pfz_la$COLOR)
 ```
 
 ```{r warning=FALSE}
@@ -344,67 +453,11 @@ __Step 6:__ Using the grouped and summarized data, a bar plot is made comparing 
 
 
 
-__Step 7:__ After producing the summary of the casualties data, the analysis moved on to look at the cost in property damage caused by each event category. As a preliminary formatting step the existing base damage estimate was combined with its exponent counterpart to get an integer estimate of the damages caused by each event. At this point, anomalous values were removed from the dataset.
-
-```{r}
-## Calculate damages with PROPDMG and CROPDMG with their exponent variables
-# deal with NA's in exponent columns
-noaa_clean[is.na(noaa_clean$PROPDMGEXP), 'PROPDMGEXP'] <- "0"
-noaa_clean[is.na(noaa_clean$CROPDMGEXP), 'CROPDMGEXP'] <- "0"
-
-# Set up look-up list for transforming exponent variable to numerical
-dmg_exps <- list("K"=3, "M"=6, "B"=9, "m"=6, "h"=2, "H"=2, "k"=3)
-
-# Deal with anomalous characters in PROPDMGEXP and CROPDMGEXP
-noaa_clean[noaa_clean$PROPDMGEXP %in% c("+", "?", "-"),
-           'PROPDMGEXP'] <- "0"
-noaa_clean[noaa_clean$CROPDMGEXP %in% c("+", "?", "-"),
-           'CROPDMGEXP'] <- "0"
-
-# Transform letter exponent to number
-noaa_clean$PROPDMGEXP <- sapply(noaa_clean$PROPDMGEXP,
-                                function(e){
-                                  ifelse(e %in% names(dmg_exps), 
-                                         dmg_exps[[e]], as.numeric(e))
-                                })
-
-noaa_clean$CROPDMGEXP <- sapply(noaa_clean$CROPDMGEXP,
-                                function(e){
-                                  ifelse(e %in% names(dmg_exps), 
-                                         dmg_exps[[e]], as.numeric(e))
-                                })
-# Perform exponent calculations, assign full cost value back to PROPDMG, CROPDMG
-noaa_clean <- noaa_clean%>%
-  mutate(PROPDMG_TOT=PROPDMG*10^PROPDMGEXP,
-         CROPDMG_TOT=CROPDMG*10^CROPDMGEXP,
-         YEAR=year(as.Date(BGN_DATE, format="%m/%d/%Y")))
-```
 
 
-__Step 8:__ A quick summary to test for outliers.
 
-```{r}
-noaa_clean%>%
-  group_by(EVCAT)%>%
-  summarize(
-            mean=mean(PROPDMG_TOT),
-            median=median(PROPDMG_TOT),
-            third_qrt=quantile(PROPDMG_TOT, .75), 
-            max=max(PROPDMG_TOT))
 
-```
 
-Most of the max values deserve some attention event category by category. In the case of `COLD`, the max value for `PROPDMG_TOT` of $5 billion doesn't seem impossible since the event in question was described as the ["Storm of the Century" or the "Blizzard of 1993"][1] in popular culture and categorized as a category 5 storm meteorologically. 
-
-The costliest fire likewise turns out not to be a data error. The [Cerro Grande Fire][2] in northern New Mexico along with other fires across the state caused widespread damage worth over a billion dollars.
-
-The damages caused by a severe hail storm in October of 2010 in Phoenix, Arizona caused close to $2 billion in damages.
-
-The maximum value for `THUNDERSTORM` is probably better moved to the flood category. 
-
-The billion dollar damages recorded for the top tornado belonged to a tornado that tore through Joplin, Missouri.
-
-The maximimum value for `WIND` is actually another instance, albeit geographically unique, for the ["Storm of the Century"][1]. Many of the other extreme property damages value for this category are attributalbe to hurricanes.
 
 __Step 9:__ Next, the same grouping and summarizing is performed on the data this time grouping the data by EVCAT and YEAR and getting the mean property and crop damage.
 
@@ -427,42 +480,11 @@ __Step 10:__
 
 ```
 
-__Step 11:__ To prepare for a plot in geographical space, the coordinate values were cleaned and formatted. Although the data includes events from US territories and the two states outside the contiguous US, the data was further subsetted on the lower 48 states. 
 
-```{r}
-## Prepare geographic plot
-# correct coordinate format
-# format longitude values
-frmt_lons <- function(x){ 
-  x2 <- x%/%100 + x%%100/100
-  if(x2<0){
-    return(x2)
-  }else{
-    return(x2*-1)
-  }
-}
-
-# format latitude values
-frmt_lats <- function(x){ 
-  x%/%100 + x%%100/100
-}
-
-# Apply functions for coordinal data
-noaa_clean$LONGITUDE <- sapply(noaa_clean$LONGITUDE, frmt_lons) 
-noaa_clean$LATITUDE <- sapply(noaa_clean$LATITUDE, frmt_lats)
-
-# Further subset coordinate values against bounding box of continental US
-noaa_clean <- subset(noaa_clean, STATE %in% state.abb)
-```
 
 __Step 12:__ 
 
-```{r Add full state name, message=FALSE, warning=FALSE}
-# Use STATE to create feature with full state name
-noaa_clean <- noaa_clean%>%
-  mutate(STATENAME=tolower(state.name[match(STATE, state.abb)]))
-  
-```
+
 
 
 ## Results & Conclusions
