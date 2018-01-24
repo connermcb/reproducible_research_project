@@ -238,7 +238,7 @@ __Step 9:__ Because some the data look extreme, a quick summary to test for outl
 # Get quantile summaries of damages by event category
 qnt_smry <- noaa_clean%>%
   group_by(EVCAT)%>%
-  summarize(
+  summarize(Low=
             mean=mean(PROPDMG_TOT),
             median=median(PROPDMG_TOT),
             third_qrt=quantile(PROPDMG_TOT, .75), 
@@ -260,6 +260,25 @@ The maximum value for `THUNDERSTORM` is probably better moved to the flood categ
 The billion dollar damages recorded for the top tornado belonged to a tornado that tore through Joplin, Missouri.
 
 The maximimum value for `WIND` is actually another instance, albeit geographically unique, for the ["Storm of the Century"][1]. Many of the other extreme property damages value for this category are attributalbe to hurricanes.
+
+## Results & Conclusions
+
+This dataset presented a particular challenge when addressing the research questions. Many of the weather event types and the generated event categories are closely correlated. Hurricanes, for instance, are destructive and deadly because of high winds and flood causing rains and storm surges. Analysis by event type or category alone would overlook this correlation and likely misinterpret the data. As further evidence four especially destructive storms were isolated in the data and the observations related to each storm are tabulated by frequency of event category. The results are summarized in the table below:
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# summary table of event categories frequency for four super storms
+kable(perf_storms)
+```
+
+As is clear in the table, the effects of a storm are summarized by storm feature not exclusively by storm category or type. Indeed, in the case of hurricanes, the table shows the wind and flooding are the most destructive features.
+
+Further complicating any direct answer to the research questions, are the distributions of damage by event category. This data is summarized in the following table:
+
+
+
+
+
+The first research question was answered visually by plotting the aggregate casualty figures per generated category. The values for the most deadly weather categories so exaggerated the y-axis that a log-scale was used so that the bars for the other categries would be apparent. The most deadly categories of severe weather were tornadoes, perhaps because they are largely unpredictable both in terms of occurrence and location besides being so destructive. Other very deadly weather categories included flooding, extremely dry and hot weather, along with strong wind. The plot below compares the deadliness of severe weather categories both in terms of fatalities and injuries. 
 
 ```{r warning=FALSE, message=FALSE}
 ## weather event categories associated with single events
@@ -558,9 +577,7 @@ __Step 12:__
 
 
 
-## Results & Conclusions
 
-The first research question was answered visually by plotting the aggregate casualty figures per generated category. The values for the most deadly weather categories so exaggerated the y-axis that a log-scale was used so that the bars for the other categries would be apparent. The most deadly categories of severe weather were tornadoes, perhaps because they are largely unpredictable both in terms of occurrence and location besides being so destructive. Other very deadly weather categories included flooding, extremely dry and hot weather, along with strong wind. The plot below compares the deadliness of severe weather categories both in terms of fatalities and injuries. 
 
 ```{r echo=FALSE}
 
