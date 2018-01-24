@@ -41,6 +41,7 @@ library(readr)
 library(reshape2)
 library(scales)
 library(stringi)
+library(xtable)
 ```
 
 __Step 2:__ The dataset is loaded into the working environment and all possible values of `EVTYPE` are catalogued.
@@ -194,7 +195,7 @@ noaa_clean <- subset(noaa_clean, STATE %in% state.abb)
 ```
 
 
-__Step 8:__ As a preliminary formatting step for examining material damage, an integer estimate of the damages caused by each event is calculated using the base and exponent variable. Observations with anomalous values (e.g. `PROGDMGEXP`="?")  are removed from the dataset.
+__Step 8:__ As a preliminary formatting step for examining material damage, an integer estimate of the damages caused by each event is calculated using the coefficient and exponent variable. Observations with anomalous values (e.g. `PROGDMGEXP`="?")  are removed from the dataset.
 
 
 ```{r}
@@ -259,6 +260,76 @@ The maximum value for `THUNDERSTORM` is probably better moved to the flood categ
 The billion dollar damages recorded for the top tornado belonged to a tornado that tore through Joplin, Missouri.
 
 The maximimum value for `WIND` is actually another instance, albeit geographically unique, for the ["Storm of the Century"][1]. Many of the other extreme property damages value for this category are attributalbe to hurricanes.
+
+```{r warning=FALSE, message=FALSE}
+## weather event categories associated with single events
+# Hurricane Katrina
+katrina <- noaa_clean%>%
+  filter(BGN_DATE >= as.Date("2005-08-22") &
+         END_DATE <= as.Date("2005-08-28") &
+         EVCAT=="HURRICANE" |
+         grepl("Katrina", noaa_clean$REMARKS))%>%
+  group_by(EVCAT)%>%
+  summarise(freq=n())
+  
+katrina <- cbind(rep("Hurricane Katrina", length(katrina)), 
+                     katrina)
+names(katrina) <- c("Storm", "Category", "Frequency")
+
+# Joplin Tornado
+joplin <- noaa_clean%>%
+  filter(BGN_DATE >= as.Date("2011-05-21") &
+        END_DATE <= as.Date("2011-05-23") &
+        FIPS %in% c(29097, 29145) |
+        grepl("Joplin", noaa_clean$REMARKS))%>%
+  group_by(EVCAT)%>%
+  summarise(freq=n())
+
+joplin <- cbind(rep("Joplin Tornado", nrow(joplin)), 
+                     joplin)
+names(joplin) <- c("Storm", "Category", "Frequency")
+
+# Storm of Century - Blizzard of 1993
+blizzard_93 <- noaa_clean%>%
+  filter(BGN_DATE >= as.Date("1993-03-11") &
+         BGN_DATE <= as.Date("1993-03-16") &
+         STATE %in% c('FL', 'MS', 'AL', 'GA', 'SC', 'NC', 'TN',
+                      'KY', 'VA', 'WV', 'IN', 'OH', 'NY', 'PA',
+                      'NJ', 'MA', 'ME', 'RI', 'DE', 'CT', 'MD',
+                      'VT'))%>%
+  group_by(EVCAT)%>%
+  summarise(freq=n())  
+
+blizzard_93 <- cbind(rep("Blizzard of 1993", nrow(blizzard_93)), 
+                     blizzard_93)
+names(blizzard_93) <- c("Storm", "Category", "Frequency")
+
+
+
+# Hurricane Camille
+camille <- noaa_clean%>%
+  filter(BGN_DATE >= as.Date("1969-08-15") &
+         BGN_DATE <= as.Date("1969-08-21") &
+         STATE %in% c('FL', 'OK', 'WV', 'VA', 'DE',
+                      'GA', 'LA', 'MS', 'AL', 'TN', 
+                      'KY') |
+         grepl("Camille", noaa_clean$REMARKS))%>%
+  group_by(EVCAT)%>%
+  summarise(freq=n())
+
+camille <- cbind(rep("Hurricane Camille", length(camille)), 
+                     camille)
+names(camille) <- c("Storm", "Category", "Frequency")
+
+perf_storms <- rbind(katrina, joplin, blizzard_93, camille)%>%
+               dcast(Category ~ Storm, value.var = "Frequency", fun=sum)
+kable(perf_storms)
+
+```
+
+
+
+
 
 ```{r warning=FALSE, message=FALSE}
 # summarize data for test plot
