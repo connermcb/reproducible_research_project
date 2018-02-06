@@ -37,9 +37,12 @@ library(gtable)
 library(knitr)
 library(lubridate)
 library(maps)
+library(raster)
 library(readr)
 library(reshape2)
+library(rgdal)
 library(scales)
+library(splitstackshape)
 library(stringi)
 library(xtable)
 ```
@@ -238,14 +241,12 @@ __Step 9:__ Because some the data look extreme, a quick summary to test for outl
 # Get quantile summaries of damages by event category
 qnt_smry <- noaa_clean%>%
   group_by(EVCAT)%>%
-  summarize(Low=
-            mean=mean(PROPDMG_TOT),
+  summarize(min=min(PROPDMG_TOT),
+            first=quantile(PROPDMG_TOT, .25),
             median=median(PROPDMG_TOT),
+            mean=mean(PROPDMG_TOT),
             third_qrt=quantile(PROPDMG_TOT, .75), 
             max=max(PROPDMG_TOT))
-
-# summaries table
-kable(qnt_smry)
 
 ```
 
@@ -263,30 +264,15 @@ The maximimum value for `WIND` is actually another instance, albeit geographical
 
 ## Results & Conclusions
 
-This dataset presented a particular challenge when addressing the research questions. Many of the weather event types and the generated event categories are closely correlated. Hurricanes, for instance, are destructive and deadly because of high winds and flood causing rains and storm surges. Analysis by event type or category alone would overlook this correlation and likely misinterpret the data. As further evidence four especially destructive storms were isolated in the data and the observations related to each storm are tabulated by frequency of event category. The results are summarized in the table below:
-
-```{r echo=FALSE, warning=FALSE, message=FALSE}
-# summary table of event categories frequency for four super storms
-kable(perf_storms)
-```
-
-As is clear in the table, the effects of a storm are summarized by storm feature not exclusively by storm category or type. Indeed, in the case of hurricanes, the table shows the wind and flooding are the most destructive features.
-
-Further complicating any direct answer to the research questions, are the distributions of damage by event category. This data is summarized in the following table:
-
-
-
-
-
-The first research question was answered visually by plotting the aggregate casualty figures per generated category. The values for the most deadly weather categories so exaggerated the y-axis that a log-scale was used so that the bars for the other categries would be apparent. The most deadly categories of severe weather were tornadoes, perhaps because they are largely unpredictable both in terms of occurrence and location besides being so destructive. Other very deadly weather categories included flooding, extremely dry and hot weather, along with strong wind. The plot below compares the deadliness of severe weather categories both in terms of fatalities and injuries. 
+This dataset presented an easily overlooked complexity when addressing the research questions. Many of the weather event types and the generated event categories are closely correlated. Hurricanes, for instance, are destructive and deadly because of high winds and flood causing rains and storm surges. Analysis by event type or category alone would overlook this correlation and likely misinterpret the data, since storms were usually listed by their most overt features. As further evidence four especially destructive storms were isolated in the data and the observations related to each storm are tabulated by frequency of event category. The results are summarized in the table below:
 
 ```{r warning=FALSE, message=FALSE}
 ## weather event categories associated with single events
 # Hurricane Katrina
 katrina <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("2005-08-22") &
-         END_DATE <= as.Date("2005-08-28") &
-         EVCAT=="HURRICANE" |
+         END_DATE <= as.Date("2005-09-01") &
+         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL') |
          grepl("Katrina", noaa_clean$REMARKS))%>%
   group_by(EVCAT)%>%
   summarise(freq=n())
@@ -342,10 +328,25 @@ names(camille) <- c("Storm", "Category", "Frequency")
 
 perf_storms <- rbind(katrina, joplin, blizzard_93, camille)%>%
                dcast(Category ~ Storm, value.var = "Frequency", fun=sum)
-kable(perf_storms)
 
 ```
 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# summary table of event categories frequency for four super storms
+kable(perf_storms)
+```
+
+As is clear in the table, the effects of a storm are summarized by storm feature not exclusively by storm category or type. Indeed, in the case of hurricanes, the table shows the wind and flooding are the most destructive features. 
+
+Further complicating any direct answer to the research questions, are the distributions of material damage by event category. This data is summarized in the following table:
+
+```{r}
+# summaries table of distributions of damages by event category
+kable(qnt_smry)
+```
+
+The distributions are extremely skewed toward higher values. Most severe weather events catalogued in the dataset don't even result in material damage. Those that do result in considerable damage and are features of or are correlated to exceptionally severe storms. So in response to both research questions, what event types are most harmful to public health and what events have the greatest economic consequences, the answer are those events that are associated with storms large magnitude and of historic presidence. 
 
 
 
@@ -354,8 +355,8 @@ kable(perf_storms)
 # summarize data for test plot
 katrina_flood <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("2005-08-22") &
-         END_DATE <= as.Date("2005-09-01") &
-         grepl("Z.*[>-]", COUNTYNAME))
+         END_DATE <= as.Date("2005-09-01") |
+         grepl("Katrina", noaa_clean$REMARKS))%>%
   group_by(FIPS)%>%
   summarise(value=log(sum(PROPDMG_TOT)+1))
 
@@ -370,14 +371,17 @@ katrina_flood$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALS
 katrina_flood$set_zoom(c("alabama", "louisiana", "mississippi", "tennessee", "kentucky"))
 
 
-katrina_flood$render_with_reference_map()
-plot(pfz_la, col=pfz_la$COLOR)
-  # geom_path(data=kat_path, mapping=aes(lon*-1, lat), size=2, color="grey50",
-  #           linetype=2, alpha=.5, show.legend = FALSE)+
+katrina_flood$render_with_reference_map()+
+  geom_polygon(data=pfz_kat2, aes(x=long, y=lat, group=group))
+  geom_path(data=kat_path, mapping=aes(Lon*-1, Lat), size=1, color="blue",
+            linetype=2, alpha=.5, show.legend = FALSE)+
   labs(caption="Flood Related")+
   theme(plot.caption = element_text(hjust = 0.5, size=14))
   # plot(pfz_la, col=pfz_la$COLOR)
 ```
+
+
+
 
 ```{r warning=FALSE}
 # summarize data for test plot
@@ -584,9 +588,71 @@ __Step 12:__
 ```
 
 ```{r echo=FALSE}
+# subset data on those observations that use Public Forecast Zones
+noaa_pfz <- subset(noaa_clean, grepl("^[A-Z]{2}Z[0-9]{3}", COUNTYNAME))
+
+# Reformat COUNTYNAME variable to space separated string of zone numbers
+process_pfzs <- function(zs){
+  zones <- c()
+  print(zs)
+  prelim <- gsub("/", " ", zs)
+  prelim <- gsub("[,;]", "-", prelim)
+  prelim <- gsub("(\\d)\\s+(\\d)", "\\1 - \\2", prelim)
+  prelim <- gsub("^[A-Z]{3}", "", prelim)%>%
+    strsplit(split="-")%>%
+    unlist%>%
+    stri_trim_both()
+  print(prelim)
+  for(each in prelim){
+    
+    if(length(each) < 1) next
+    
+    if(grepl("[[:alpha:]]", each)) next
+    
+    if(grepl(">", each)){
+      temp <- unlist(strsplit(split=">", each))
+      
+      if(length(temp) < 2){
+        zones <- c(zones, temp)
+        next
+      }
+      
+      start <- temp[[1]]
+      stop <- temp[[2]]
+
+      if(nchar(start)>3){
+        sst <- substring(start, 
+                         seq(1, nchar(start)-1, 3), 
+                         seq(3, nchar(start), 3))
+        start <- sst[length(sst)]
+        for(s in sst[1:length(sst)-1]){
+          if(s != start) zones <- c(zones, s)
+        }
+          }
+      if(nchar(stop)>3){
+        sst <- substring(stop, 
+                         seq(1, nchar(stop)-1, 3), 
+                         seq(3, nchar(stop), 3))
+        stop <- sst[1]
+        for(s in sst[2:length(sst)]){
+          if(s != stop) zones <- c(zones, s)
+        print(stop)
+        }
+          }
+            
+      zones <- c(zones, as.integer(start):as.integer(stop))}
+    else{zones <- c(zones, each)}}
+  zones <- paste(zones, collapse=" ")
+  print(zones)
+  return(zones)
+}
+
+noaa_pfz <- noaa_pfz%>%mutate(PFZ=sapply(COUNTYNAME, process_pfzs))
+
+process_pfzs("COZ060 - 062 - 065>067070 - 073 - 074")
 
 
-  
+
 ```
 
 
