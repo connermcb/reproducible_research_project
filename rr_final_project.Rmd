@@ -594,18 +594,18 @@ noaa_pfz <- subset(noaa_clean, grepl("^[A-Z]{2}Z[0-9]{3}", COUNTYNAME))
 # Reformat COUNTYNAME variable to space separated string of zone numbers
 process_pfzs <- function(zs){
   zones <- c()
-  print(zs)
   prelim <- gsub("/", " ", zs)
   prelim <- gsub("[,;]", "-", prelim)
   if(!grepl("-", prelim)) prelim <- gsub(" ",  "-", prelim)
   prelim <- gsub("(\\d)\\s+(\\d)", "\\1 - \\2", prelim)
+  
   prelim <- gsub("^[A-Z]{3}", "", prelim)%>%
     strsplit(split="-")%>%
     unlist%>%
     stri_trim_both()
-  print(prelim)
+  
   for(each in prelim){
-    print(each)
+
     if(length(each) < 1) next
     
     if(grepl("[[:alpha:]]", each)) next
@@ -648,16 +648,23 @@ process_pfzs <- function(zs){
       zones <- c(zones, as.integer(start):as.integer(stop))}
     else{zones <- c(zones, each)}}
   zones <- paste(zones, collapse=" ")
-  print(zones)
   return(zones)
 }
 
-noaa_pfz <- noaa_pfz%>%mutate(PFZ=sapply(COUNTYNAME, process_pfzs))
-
-process_pfzs("PAZ020 - 021 - 029 - >032")
 
 
+noaa_kat <- noaa_clean%>%
+  filter(BGN_DATE >= as.Date("2005-08-22") &
+         END_DATE <= as.Date("2005-09-01") &
+         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL') |
+         grepl("Katrina", noaa_clean$REMARKS))
 
+noaa_kat_pfz <- subset(noaa_kat, grepl("^[A-Z]{2}Z[0-9]{3}", COUNTYNAME))
+
+noaa_kat_pfz2 <- noaa_kat_pfz%>%mutate(PFZ=sapply(COUNTYNAME, process_pfzs))
+
+noaa_kat_pfz3 <- cSplit(noaa_kat_pfz2, c("PFZ"), sep=" ", direction="long",
+                        drop = FALSE)
 ```
 
 
