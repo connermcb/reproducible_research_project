@@ -829,6 +829,7 @@ test <- left_join(pfz_kat2, noaa_kat_pfz4)
 
 ggplot(test)+geom_polygon(aes(x=long, y=lat, group=group, fill=log(PROPDMG_TOT)), color="black", alpha=0.3)+scale_fill_continuous(low="yellow", high="red", na.value = "grey90")
 
+
 ```
 
 
