@@ -372,7 +372,8 @@ katrina_flood$set_zoom(c("alabama", "louisiana", "mississippi", "tennessee", "ke
 
 
 katrina_flood$render_with_reference_map()+
-  geom_polygon(data=pfz_kat2, aes(x=long, y=lat, group=group))
+  geom_polygon(data=pfz_kat2, aes(x=long, y=lat, group=group, fill="yellow"), 
+               alpha=0.3)
   geom_path(data=kat_path, mapping=aes(Lon*-1, Lat), size=1, color="blue",
             linetype=2, alpha=.5, show.legend = FALSE)+
   labs(caption="Flood Related")+
@@ -655,8 +656,8 @@ process_pfzs <- function(zs){
 
 noaa_kat <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("2005-08-22") &
-         END_DATE <= as.Date("2005-09-01") &
-         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL') |
+         BGN_DATE <= as.Date("2005-09-01") &
+         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL') &
          grepl("Katrina", noaa_clean$REMARKS))
 
 noaa_kat_pfz <- subset(noaa_kat, grepl("^[A-Z]{2}Z[0-9]{3}", COUNTYNAME))
@@ -665,6 +666,19 @@ noaa_kat_pfz2 <- noaa_kat_pfz%>%mutate(PFZ=sapply(COUNTYNAME, process_pfzs))
 
 noaa_kat_pfz3 <- cSplit(noaa_kat_pfz2, c("PFZ"), sep=" ", direction="long",
                         drop = FALSE)
+noaa_kat_pfz3$PFZ <- sapply(noaa_kat_pfz3$PFZ, 
+                            function(x){
+                              paste0(paste0(rep("0", 3-nchar(x)), 
+                                            collapse = ""), x)})
+
+noaa_kat_pfz3$id <- with(noaa_kat_pfz3, paste0(STATE, PFZ))
+
+noaa_kat_pfz4 <- subset(noaa_kat_pfz3, PROPDMG_TOT > 0)
+
+test <- left_join(pfz_kat2, noaa_kat_pfz4)
+
+ggplot(test)+geom_polygon(aes(x=long, y=lat, group=group, fill=log(PROPDMG_TOT)), color="black", alpha=0.3)+scale_fill_continuous(low="yellow", high="red", na.value = "grey90")
+
 ```
 
 
