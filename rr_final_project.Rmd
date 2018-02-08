@@ -353,34 +353,184 @@ The distributions are extremely skewed toward higher values. Most severe weather
 
 ```{r warning=FALSE, message=FALSE}
 # summarize data for test plot
-katrina_flood <- noaa_clean%>%
+katrina_dmgs <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("2005-08-22") &
-         END_DATE <= as.Date("2005-09-01") |
-         grepl("Katrina", noaa_clean$REMARKS))%>%
+         BGN_DATE <= as.Date("2005-09-01") &
+         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL') &
+         grepl("Katrina", noaa_clean$REMARKS) &
+         EVCAT == "FLOOD")%>%
   group_by(FIPS)%>%
-  summarise(value=log(sum(PROPDMG_TOT)+1))
+  summarise(value=log(sum(PROPDMG_TOT)+1) + log(sum(CROPDMG_TOT)))
 
 
-names(katrina_flood)[1] <- "region"
+names(katrina_dmgs)[1] <- "region"
 
 
 # test plot of FIPS data
-katrina_flood <- CountyChoropleth$new(katrina_flood)
-katrina_flood$set_num_colors(5)
-katrina_flood$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-katrina_flood$set_zoom(c("alabama", "louisiana", "mississippi", "tennessee", "kentucky"))
+katrina_chrplth <- CountyChoropleth$new(katrina_dmgs)
+katrina_chrplth$set_num_colors(1)
+katrina_chrplth$ggplot_scale <- scale_fill_continuous(low="yellow", high="red", 
+                                                    na.value = NA, guide = FALSE)
+katrina_chrplth$set_zoom(c("alabama", "louisiana", "mississippi", "tennessee", "kentucky"))
 
 
-katrina_flood$render_with_reference_map()+
-  geom_polygon(data=pfz_kat2, aes(x=long, y=lat, group=group, fill="yellow"), 
-               alpha=0.3)
+katrina_chrplth$render_with_reference_map()+
+  geom_polygon(data=test, aes(x=long, y=lat, group=group,
+                              fill=log(PROPDMG_TOT)), alpha=0.5)+
   geom_path(data=kat_path, mapping=aes(Lon*-1, Lat), size=1, color="blue",
             linetype=2, alpha=.5, show.legend = FALSE)+
-  labs(caption="Flood Related")+
-  theme(plot.caption = element_text(hjust = 0.5, size=14))
-  # plot(pfz_la, col=pfz_la$COLOR)
+  labs(Title="Distribution of Katrina Property & Crop Damages",
+       Caption="")+
+  theme(plot.title = element_text(hjust = 0.5, size=14),
+        plot.caption = element_text(hjust = 0.5, size=10))
+
+
 ```
 
+```{r}
+usa_wind_df <- noaa_clean%>%
+  filter(EVCAT=="WIND",
+         YEAR >= 2000,
+         !(STATE %in% c("AK", "HI")))%>%
+  group_by(FIPS)%>%
+  summarise(value=log(mean(CROPDMG_TOT) + 1))
+
+names(usa_wind_df)[1] <- "region"
+
+usa_wind_chrplth <- CountyChoropleth$new(usa_wind_df)
+usa_wind_chrplth$set_num_colors(5)
+usa_wind_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
+zoom_states <- tolower(state.name)[-c(2, 11)]
+
+usa_wind_chrplth$set_zoom(zoom_states)
+
+usa_wind_plot <- usa_wind_chrplth$render_with_reference_map()
+
+usa_wind_plot
+
+# Flood nationally
+usa_flood_df <- noaa_clean%>%
+  filter(EVCAT=="FLOOD",
+         !(STATE %in% c("AK", "HI")))%>%
+  group_by(FIPS)%>%
+  summarise(value=log(sum(PROPDMG_TOT) + 1))
+
+names(usa_flood_df)[1] <- "region"
+
+usa_flood_chrplth <- CountyChoropleth$new(usa_flood_df)
+usa_flood_chrplth$set_num_colors(5)
+usa_flood_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
+zoom_states <- tolower(state.name)[-c(2, 11)]
+
+usa_flood_chrplth$set_zoom(zoom_states)
+
+usa_flood_plot <- usa_flood_chrplth$render_with_reference_map()
+
+usa_flood_plot
+
+# Hurricane nationally
+usa_hurr_df <- noaa_clean%>%
+  filter(EVCAT=="HURRICANE",
+         !(STATE %in% c("AK", "HI")))%>%
+  group_by(FIPS)%>%
+  summarise(value=log(sum(PROPDMG_TOT) + 1))
+
+names(usa_hurr_df)[1] <- "region"
+
+usa_hurr_chrplth <- CountyChoropleth$new(usa_hurr_df)
+usa_hurr_chrplth$set_num_colors(5)
+usa_hurr_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
+zoom_states <- tolower(state.name)[-c(2, 11)]
+
+usa_hurr_chrplth$set_zoom(zoom_states)
+
+usa_hurr_plot <- usa_hurr_chrplth$render_with_reference_map()
+
+usa_hurr_plot
+
+# Tornado nationally
+usa_tornado_df <- noaa_clean%>%
+  filter(EVCAT=="TORNADO",
+         !(STATE %in% c("AK", "HI")))%>%
+  group_by(FIPS)%>%
+  summarise(value=log(sum(PROPDMG_TOT) + 1))
+
+names(usa_tornado_df)[1] <- "region"
+
+usa_tornado_chrplth <- CountyChoropleth$new(usa_tornado_df)
+usa_tornado_chrplth$set_num_colors(5)
+usa_tornado_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
+zoom_states <- tolower(state.name)[-c(2, 11)]
+
+usa_tornado_chrplth$set_zoom(zoom_states)
+
+usa_tornado_plot <- usa_tornado_chrplth$render_with_reference_map()
+
+usa_tornado_plot
+
+# Cold nationally
+usa_hail_df <- noaa_clean%>%
+  filter(EVCAT=="HAIL",
+         !(STATE %in% c("AK", "HI")))%>%
+  group_by(FIPS)%>%
+  summarise(value=log(sum(CROPDMG_TOT) + 1))
+
+names(usa_hail_df)[1] <- "region"
+
+usa_hail_chrplth <- CountyChoropleth$new(usa_hail_df)
+usa_hail_chrplth$set_num_colors(5)
+usa_hail_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
+zoom_states <- tolower(state.name)[-c(2, 11)]
+
+usa_hail_chrplth$set_zoom(zoom_states)
+
+usa_hail_plot <- usa_hail_chrplth$render_with_reference_map()
+
+usa_hail_plot
+
+
+#Thunderstorms
+usa_tstorms_df <- noaa_clean%>%
+  filter(EVCAT=="THUNDERSTORM",
+         !(STATE %in% c("AK", "HI")))%>%
+  group_by(FIPS)%>%
+  summarise(value=log(sum(CROPDMG_TOT) + 1))
+
+names(usa_tstorms_df)[1] <- "region"
+
+usa_tstorms_chrplth <- CountyChoropleth$new(usa_tstorms_df)
+usa_tstorms_chrplth$set_num_colors(5)
+usa_tstorms_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
+zoom_states <- tolower(state.name)[-c(2, 11)]
+
+usa_tstorms_chrplth$set_zoom(zoom_states)
+
+usa_tstorms_plot <- usa_tstorms_chrplth$render_with_reference_map()
+
+usa_tstorms_plot
+
+
+# heat_dry
+usa_heat_df <- noaa_clean%>%
+  filter(EVCAT=="HEAT_DRY",
+         !(STATE %in% c("AK", "HI")))%>%
+  group_by(FIPS)%>%
+  summarise(value=log(sum(CROPDMG_TOT) + 1))
+
+names(usa_heat_df)[1] <- "region"
+
+usa_heat_chrplth <- CountyChoropleth$new(usa_heat_df)
+usa_heat_chrplth$set_num_colors(5)
+usa_heat_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
+zoom_states <- tolower(state.name)[-c(2, 11)]
+
+usa_heat_chrplth$set_zoom(zoom_states)
+
+usa_heat_plot <- usa_heat_chrplth$render_with_reference_map()
+
+usa_heat_plot
+
+```
 
 
 
