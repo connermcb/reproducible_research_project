@@ -29,20 +29,14 @@ __Step 1:__ The requisite libraries are loaded to facilitate analysis and data c
 
 ```{r Get Packages, message=FALSE, warning=FALSE}
 # load packages
-library(choroplethr)
-library(choroplethrMaps)
 library(dplyr)
 library(ggplot2)
 library(gtable)
 library(knitr)
 library(lubridate)
-library(maps)
-library(raster)
 library(readr)
 library(reshape2)
-library(rgdal)
 library(scales)
-library(splitstackshape)
 library(stringi)
 library(xtable)
 ```
@@ -59,7 +53,7 @@ length(unq)
 head(unq)
 ```
 
-__Step 3:__ After informally cataloging the multitude of weather event types (using `table(noaa$EVTYPE)`), it is advisable not only to clean up the many errors and disparities in the data but also gather the data into categories so that similar events could be examined and assessed collectively. The reasoning here was that similar events often develop under similar conditions and share a profile in terms of damages, for example flooding from heavy rain and flooding from storm surge. To accomplish this, several grouping functions were implemented that rely on regular expressions.
+__Step 3:__ After informally cataloging the large number of weather event types (using `table(noaa$EVTYPE)`), it became clearly necessary not only to clean up the many errors and disparities that abound in the data but also gather the event type data into categories so that similar events could be examined and assessed collectively. The reasoning here was that similar events often develop under similar conditions and share a profile in terms of damages, for example flooding from heavy rain and flooding from storm surge. To accomplish this, several grouping functions were implemented that rely on regular expressions.
 
 ```{r Clean Data, message=FALSE, warning=FALSE}
 ## clean `EVTYPE` data
@@ -142,7 +136,7 @@ noaa_clean <- noaa_clean[noaa_clean$EVCAT %in% names(freq_evts),]
 noaa_clean[, "EVCAT"] <- as.factor(noaa_clean$EVCAT)
 ```
 
-__Step 5:__ The numeric codes for `STATE__` and `COUNTY` are formatted and combined into a [FIPS county code][3] for later geographic plotting by county.
+__Step 5:__ The numeric codes for `STATE__` and `COUNTY` are formatted and combined into a [FIPS county code][3] for possible geographic plotting by county.
 
 ```{r Generate FIPS codes}
 # COUNTY code formatting function, adds requisite zeros
@@ -151,7 +145,7 @@ noaa_clean <- noaa_clean%>%
 
 ```
 
-__Step 6:__ To facilitate subsetting the data on the particular dates of exceptional events such as large hurricanes, the date fields `BGN_DATE` and `END_DATE` are transformed form character objects to Date objects.
+__Step 6:__ To facilitate subsetting the data on the particular dates to capture exceptional events such as large hurricanes, the date fields `BGN_DATE` and `END_DATE` are transformed form character objects to Date objects.
 
 ```{r Format Dates, warning=FALSE, message=FALSE}
 # transform date variable from character class to Date class
@@ -170,6 +164,7 @@ noaa_clean <- noaa_clean%>%
 ```
 
 In addition, the coordinate values, `LONGITUDE` and `LATITUDE` are cleaned and formatted. Although the data includes events from US territories and the two states outside the contiguous US, the data was further subsetted on the lower 48 states. 
+
 
 ```{r}
 ## Prepare geographic plot
@@ -235,7 +230,7 @@ noaa_clean <- noaa_clean%>%
          YEAR=year(as.Date(BGN_DATE, format="%m/%d/%Y")))
 ```
 
-__Step 9:__ Because some the data look extreme, a quick summary to test for outliers.
+__Step 9:__ Because some the data under `PROPDMG` look extreme, a quick summary to test for outliers.
 
 ```{r message=FALSE, warning=FALSE}
 # Get quantile summaries of damages by event category
@@ -250,21 +245,21 @@ qnt_smry <- noaa_clean%>%
 
 ```
 
-Most of the max values deserve some attention event category by category. In the case of `COLD`, the max value for `PROPDMG_TOT` of $5 billion doesn't seem impossible since the event in question was described as the ["Storm of the Century" or the "Blizzard of 1993"][1] in popular culture and categorized as a category 5 storm meteorologically. 
+The max values will be examined event category by event category to look for outliers or anomalies. In the case of `COLD`, the max value for `PROPDMG_TOT` of $5 billion doesn't seem plausible. The event in question was described as the ["Storm of the Century" or the "Blizzard of 1993"][1] in popular culture and categorized as a category 5 storm meteorologically under which the entire eastern seaboard of the United States experienced extreme weather conditions including record snowfalls in states as far south as Alabama. 
 
-The costliest fire likewise turns out not to be a data error. The [Cerro Grande Fire][2] in northern New Mexico along with other fires across the state caused widespread damage worth over a billion dollars.
+Likewise, the costliest fire turns out not to be a data error. The [Cerro Grande Fire][2] in northern New Mexico along with other fires across the state caused widespread damage worth over a billion dollars.
 
 The damages caused by a severe hail storm in October of 2010 in Phoenix, Arizona caused close to $2 billion in damages.
 
 The maximum value for `THUNDERSTORM` is probably better moved to the flood category. 
 
-The billion dollar damages recorded for the top tornado belonged to a tornado that tore through Joplin, Missouri.
+The billion dollar damages recorded for the top tornado belonged to a tornado that tore through Joplin, Missouri in May of 2011.
 
-The maximimum value for `WIND` is actually another instance, albeit geographically unique, for the ["Storm of the Century"][1]. Many of the other extreme property damages value for this category are attributalbe to hurricanes.
+The maximimum value for `WIND` is actually another observation attributable to the ["Storm of the Century"][1]. Many of the other extreme property damages value for this category are attributalbe to hurricanes.
 
 ## Results & Conclusions
 
-This dataset presented an easily overlooked complexity when addressing the research questions. Many of the weather event types and the generated event categories are closely correlated. Hurricanes, for instance, are destructive and deadly because of high winds and flood causing rains and storm surges. Analysis by event type or category alone would overlook this correlation and likely misinterpret the data, since storms were usually listed by their most overt features. As further evidence four especially destructive storms were isolated in the data and the observations related to each storm are tabulated by frequency of event category. The results are summarized in the table below:
+This dataset presented an easily overlooked complexity when addressing the research questions. Many of the weather event types and the generated event categories are closely correlated. Hurricanes, for instance, are destructive and deadly because of high winds and flood causing rains and storm surges. Analysis by event type or category alone would overlook this correlation and likely misinterpret the data, assigning casualty or damage figures to weather characteristics instead of broader event types. To demonstrate this, four especially destructive storms were isolated in the data and the observations related to each storm are tabulated by frequency of event category. The results are summarized in the table below:
 
 ```{r warning=FALSE, message=FALSE}
 ## weather event categories associated with single events
@@ -334,105 +329,21 @@ perf_storms <- rbind(katrina, joplin, blizzard_93, camille)%>%
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 # summary table of event categories frequency for four super storms
-kable(perf_storms)
+kable(perf_storms, caption="Observations Attributable to Super-Storms by Catalogues Event Category")
 ```
 
-As is clear in the table, the effects of a storm are summarized by storm feature not exclusively by storm category or type. Indeed, in the case of hurricanes, the table shows the wind and flooding are the most destructive features. 
+As is clear in the table, the effects of a storm are summarized by storm feature not exclusively by storm category or type. For example, a relatively low proportion of observations attributable to Hurricane Katrina were actually catalogued under hurricane. The table shows that observations were usually listed under the most destructive feature such as wind and flooding. 
 
 Further complicating any direct answer to the research questions, are the distributions of material damage by event category. This data is summarized in the following table:
 
 ```{r}
 # summaries table of distributions of damages by event category
-kable(qnt_smry)
+kable(qnt_smry, caption = "Quantile Distributions of Property Damages by Event Category")
 ```
 
-The distributions are extremely skewed toward higher values. Most severe weather events catalogued in the dataset don't even result in material damage. Those that do result in considerable damage and are features of or are correlated to exceptionally severe storms. So in response to both research questions, what event types are most harmful to public health and what events have the greatest economic consequences, the answer are those events that are associated with storms large magnitude and of historic presidence. 
+The distributions are extremely skewed toward higher values. Most weather events catalogued in the dataset don't even result in material damage, and those that do inflict considerable damage. The vast majority of casualties and damages captured by the dataset are caused by a very small proportion of storms. Therefore in response to both research questions, what event types are most harmful to public health and what events have the greatest economic consequences, the answer would be the collective set of features of perfect or super storms of large magnitude and geographic spread as well as historic presidence. 
 
-```{r}
-# Affected States
-af_sts_kat <- c('alabama', 'louisiana', 'mississippi', 
-                'kentucky', 'tennessee', 'florida',
-                'arkansas', 'illinois', 'missouri', 'virginia',
-                'indiana', 'ohio', 'georgia', 'south carolina',
-                'north carolina')
-
-# Summarize Hurricane Katrina Damages
-katrina_dmgs <- noaa_clean%>%
-  filter(BGN_DATE >= as.Date("2005-08-22") &
-         BGN_DATE <= as.Date("2005-09-01") &
-         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL',
-                      'AR', 'IL', 'IN', 'OH', 'GA', 'MO',
-                      'SC', 'NC', 'VA') &
-         grepl("Katrina", noaa_clean$REMARKS))%>%
-  group_by(STATENAME, EVCAT)%>%
-  summarise(value=log(sum(PROPDMG_TOT) + sum(CROPDMG_TOT) + 1))
-
-names(katrina_dmgs)[1] <- "region" 
-
-states_map <- map_data("state", region = af_sts_kat)
-
-ggplot(katrina_dmgs, aes(map_id = region)) + 
-    geom_map(data=states_map, map = states_map, color="black", fill=NA)+
-    geom_map(aes(fill = value), color="black", map = states_map) +
-    scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
-    expand_limits(x = states_map$long, y = states_map$lat)+
-    facet_wrap(~EVCAT)+
-    theme(axis.ticks=element_blank(), 
-          axis.text = element_blank(),
-          axis.title = element_blank(),
-          axis.line = element_blank(),
-          legend.background = element_blank(),
-          legend.key = element_blank(),
-          panel.grid = element_blank(),
-          strip.background = element_blank())
-
-
-```
-
-
-```{r warning=FALSE, message=FALSE}
-# vector of affected states
-af_sts <- c("alabama",  "connecticut", "delaware", "florida", "georgia",
-                    "kentucky", "louisiana", "maine", "maryland", "massachusetts",
-                    "mississippi", "new hampshire",  "new jersey", "new york",
-                    "north carolina", "pennsylvania", "south carolina",
-                    "tennessee", "vermont", "virginia", "west virginia")
-
-```
-
-```{r}
-# Summarize Blizzard of 1993 Damages
-blizzard_93_facet <- noaa_clean%>%
-  filter(BGN_DATE >= as.Date("1993-03-11") & 
-           BGN_DATE <= as.Date("1993-03-15") &
-           !(EVCAT %in% c("HURRICANE", "LIGHTNING")) &
-           STATENAME %in% af_sts)%>%
-  group_by(STATENAME, EVCAT)%>%
-  summarise(value=log(sum(PROPDMG_TOT) + sum(CROPDMG_TOT) + 1))
-
-names(blizzard_93_facet)[1] <- "region" 
-
-states_map <- map_data("state", region = af_sts)
-
-ggplot(blizzard_93_facet, aes(map_id = region)) + 
-    geom_map(data=states_map, map = states_map, color="black", fill=NA)+
-    geom_map(aes(fill = value), color="black", map = states_map) +
-    scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
-    expand_limits(x = states_map$long, y = states_map$lat)+
-    facet_wrap(~EVCAT)+
-    theme(axis.ticks=element_blank(), 
-          axis.text = element_blank(),
-          axis.title = element_blank(),
-          axis.line = element_blank(),
-          legend.background = element_blank(),
-          legend.key = element_blank(),
-          panel.grid = element_blank(),
-          strip.background = element_blank())
-
-
-```
-
-
+Plotting the casualties and damages by event category over time visually demonstrates that the vast bulk of human and material damages are owed to super storms.  
 
 __Step 6:__ Next, the data was grouped by category, and counts for fatalities and injuries were calculated. 
 
@@ -444,8 +355,6 @@ smry_fatals <- noaa_clean%>%
   summarize(tot_fatals=sum(FATALITIES),
             tot_injuries=sum(INJURIES))%>%
   melt(id.vars=c("EVCAT", "YEAR"), measure.vars=c("tot_fatals", "tot_injuries"))
-
-kable(smry_fatals)
 
 ggplot(smry_fatals)+
   geom_line(aes(x=YEAR, y=value, color=variable))+
@@ -473,12 +382,111 @@ smry_dmgs <- noaa_clean%>%
   summarize(tot_prop=mean(PROPDMG_TOT),
             tot_crop=mean(CROPDMG_TOT))
 
-kable(smry_dmgs)
-
 ggplot(smry_dmgs)+
   geom_line(aes(x=YEAR, y=tot_prop+tot_crop))+
   facet_wrap(~EVCAT)
 ```
+
+
+To gain some insight into how events are categorized in the dataset, individual storms will be focused on. 
+
+```{r}
+# Create vectory of states affected by Hurricane Katrina
+af_sts_kat <- c('alabama', 'louisiana', 'mississippi', 
+                'kentucky', 'tennessee', 'florida',
+                'arkansas', 'illinois', 'missouri', 'virginia',
+                'indiana', 'ohio', 'georgia', 'south carolina',
+                'north carolina')
+
+# Summarize Hurricane Katrina Damages
+katrina_dmgs <- noaa_clean%>%
+  filter(BGN_DATE >= as.Date("2005-08-22") &
+         BGN_DATE <= as.Date("2005-09-01") &
+         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL',
+                      'AR', 'IL', 'IN', 'OH', 'GA', 'MO',
+                      'SC', 'NC', 'VA') &
+         grepl("Katrina", noaa_clean$REMARKS))%>%
+  group_by(STATENAME, EVCAT)%>%
+  summarise(value=log(sum(PROPDMG_TOT) + sum(CROPDMG_TOT) + 1))
+
+# Rename variables
+names(katrina_dmgs)[1] <- "region" 
+
+# Create base map
+states_map <- map_data("state", region = af_sts_kat)
+
+# Faceted plot of hurricane damages by event category
+ggplot(katrina_dmgs, aes(map_id = region)) + 
+    geom_map(data=states_map, map = states_map, color="black", fill=NA)+
+    geom_map(aes(fill = value), color="black", map = states_map) +
+    scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
+    expand_limits(x = states_map$long, y = states_map$lat)+
+    facet_wrap(~EVCAT)+
+  labs(Title="Hurricane Katrina State Level Damages by Event Category")
+    theme(axis.ticks=element_blank(), 
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.line = element_blank(),
+          legend.background = element_blank(),
+          legend.key = element_blank(),
+          panel.grid = element_blank(),
+          strip.background = element_blank())
+
+
+```
+
+The plots show that...
+
+
+```{r warning=FALSE, message=FALSE}
+# vector of affected states for Blizzard of 1993
+af_sts <- c("alabama",  "connecticut", "delaware", "florida", "georgia",
+                    "kentucky", "louisiana", "maine", "maryland", "massachusetts",
+                    "mississippi", "new hampshire",  "new jersey", "new york",
+                    "north carolina", "pennsylvania", "south carolina",
+                    "tennessee", "vermont", "virginia", "west virginia")
+
+```
+
+```{r}
+# Summarize Blizzard of 1993 Damages
+blizzard_93_facet <- noaa_clean%>%
+  filter(BGN_DATE >= as.Date("1993-03-11") & 
+           BGN_DATE <= as.Date("1993-03-15") &
+           !(EVCAT %in% c("HURRICANE", "LIGHTNING")) &
+           STATENAME %in% af_sts)%>%
+  group_by(STATENAME, EVCAT)%>%
+  summarise(value=log(sum(PROPDMG_TOT) + sum(CROPDMG_TOT) + 1))
+
+# Rename variables
+names(blizzard_93_facet)[1] <- "region" 
+
+# Create base map
+states_map <- map_data("state", region = af_sts)
+
+# Faceted plot of state level damages by event category 
+ggplot(blizzard_93_facet, aes(map_id = region)) + 
+    geom_map(data=states_map, map = states_map, color="black", fill=NA)+
+    geom_map(aes(fill = value), color="black", map = states_map) +
+    scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
+    expand_limits(x = states_map$long, y = states_map$lat)+
+    facet_wrap(~EVCAT)+
+  labs(Title="Blizzard of 1993 State Level Damages by Event Category")
+    theme(axis.ticks=element_blank(), 
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.line = element_blank(),
+          legend.background = element_blank(),
+          legend.key = element_blank(),
+          panel.grid = element_blank(),
+          strip.background = element_blank())
+
+
+```
+
+
+
+
  
 __Step 10:__ 
 
