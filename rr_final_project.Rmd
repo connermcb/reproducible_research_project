@@ -439,13 +439,17 @@ __Step 6:__ Next, the data was grouped by category, and counts for fatalities an
 ```{r}
 # group data by EVCAT and get total fatalities, injuries for each category
 smry_fatals <- noaa_clean%>%
-  group_by(EVCAT)%>%
+  filter(YEAR>1990)%>%
+  group_by(EVCAT, YEAR)%>%
   summarize(tot_fatals=sum(FATALITIES),
             tot_injuries=sum(INJURIES))%>%
-  melt(id.vars='EVCAT', measure.vars=c('tot_fatals', 
-                                       'tot_injuries'),
-       variable.name="type", value.name = "value")%>%
-  arrange(type, desc(value))
+  melt(id.vars=c("EVCAT", "YEAR"), measure.vars=c("tot_fatals", "tot_injuries"))
+
+kable(smry_fatals)
+
+ggplot(smry_fatals)+
+  geom_line(aes(x=YEAR, y=value, color=variable))+
+  facet_wrap(~EVCAT)
 
 # Change levle order in prep for sorted bar plot
 smry_fatals$EVCAT <- factor(smry_fatals$EVCAT, 
@@ -467,14 +471,16 @@ __Step 9:__ Next, the same grouping and summarizing is performed on the data thi
 ```{r}
 # Group data by event category and year, summarize by property and crop totals
 smry_dmgs <- noaa_clean%>%
+  filter(YEAR > 1990)%>%
   group_by(EVCAT, YEAR)%>%
   summarize(tot_prop=mean(PROPDMG_TOT),
-            tot_crop=mean(CROPDMG_TOT))%>%
-  filter(tot_prop > 0 & tot_crop > 0)%>%
-  melt(id.vars=c('EVCAT', 'YEAR'), measure.vars=c('tot_prop', 'tot_crop'),
-       variable.name="type", value.name = "value")%>%
-  arrange(type, desc(value))
+            tot_crop=mean(CROPDMG_TOT))
 
+kable(smry_dmgs)
+
+ggplot(smry_dmgs)+
+  geom_line(aes(x=YEAR, y=tot_prop+tot_crop))+
+  facet_wrap(~EVCAT)
 ```
  
 __Step 10:__ 
