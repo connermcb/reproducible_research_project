@@ -348,226 +348,45 @@ kable(qnt_smry)
 
 The distributions are extremely skewed toward higher values. Most severe weather events catalogued in the dataset don't even result in material damage. Those that do result in considerable damage and are features of or are correlated to exceptionally severe storms. So in response to both research questions, what event types are most harmful to public health and what events have the greatest economic consequences, the answer are those events that are associated with storms large magnitude and of historic presidence. 
 
+```{r}
+# Affected States
+af_sts_kat <- c('alabama', 'louisiana', 'mississippi', 
+                'kentucky', 'tennessee', 'florida',
+                'arkansas', 'illinois', 'missouri', 'virginia',
+                'indiana', 'ohio', 'georgia', 'south carolina',
+                'north carolina')
 
-
-
-```{r warning=FALSE, message=FALSE}
-# summarize data for test plot
+# Summarize Hurricane Katrina Damages
 katrina_dmgs <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("2005-08-22") &
          BGN_DATE <= as.Date("2005-09-01") &
-         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL') &
-         grepl("Katrina", noaa_clean$REMARKS) &
-         EVCAT == "FLOOD")%>%
-  group_by(FIPS)%>%
-  summarise(value=log(sum(PROPDMG_TOT)+1) + log(sum(CROPDMG_TOT)))
+         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL',
+                      'AR', 'IL', 'IN', 'OH', 'GA', 'MO',
+                      'SC', 'NC', 'VA') &
+         grepl("Katrina", noaa_clean$REMARKS))%>%
+  group_by(STATENAME, EVCAT)%>%
+  summarise(value=log(sum(PROPDMG_TOT) + sum(CROPDMG_TOT) + 1))
+
+names(katrina_dmgs)[1] <- "region" 
+
+states_map <- map_data("state", region = af_sts_kat)
+
+ggplot(katrina_dmgs, aes(map_id = region)) + 
+    geom_map(data=states_map, map = states_map, color="black", fill=NA)+
+    geom_map(aes(fill = value), color="black", map = states_map) +
+    scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
+    expand_limits(x = states_map$long, y = states_map$lat)+
+    facet_wrap(~EVCAT)+
+    theme(axis.ticks=element_blank(), 
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.line = element_blank(),
+          legend.background = element_blank(),
+          legend.key = element_blank(),
+          panel.grid = element_blank(),
+          strip.background = element_blank())
 
 
-names(katrina_dmgs)[1] <- "region"
-
-
-# test plot of FIPS data
-katrina_chrplth <- CountyChoropleth$new(katrina_dmgs)
-katrina_chrplth$set_num_colors(1)
-katrina_chrplth$ggplot_scale <- scale_fill_continuous(low="yellow", high="red", 
-                                                    na.value = NA, guide = FALSE)
-katrina_chrplth$set_zoom(c("alabama", "louisiana", "mississippi", "tennessee", "kentucky"))
-
-
-katrina_chrplth$render_with_reference_map()+
-  geom_polygon(data=test, aes(x=long, y=lat, group=group,
-                              fill=log(PROPDMG_TOT)), alpha=0.5)+
-  geom_path(data=kat_path, mapping=aes(Lon*-1, Lat), size=1, color="blue",
-            linetype=2, alpha=.5, show.legend = FALSE)+
-  labs(Title="Distribution of Katrina Property & Crop Damages",
-       Caption="")+
-  theme(plot.title = element_text(hjust = 0.5, size=14),
-        plot.caption = element_text(hjust = 0.5, size=10))
-
-
-```
-
-```{r}
-usa_wind_df <- noaa_clean%>%
-  filter(EVCAT=="WIND",
-         YEAR >= 2000,
-         !(STATE %in% c("AK", "HI")))%>%
-  group_by(FIPS)%>%
-  summarise(value=log(mean(CROPDMG_TOT) + 1))
-
-names(usa_wind_df)[1] <- "region"
-
-usa_wind_chrplth <- CountyChoropleth$new(usa_wind_df)
-usa_wind_chrplth$set_num_colors(5)
-usa_wind_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-zoom_states <- tolower(state.name)[-c(2, 11)]
-
-usa_wind_chrplth$set_zoom(zoom_states)
-
-usa_wind_plot <- usa_wind_chrplth$render_with_reference_map()
-
-usa_wind_plot
-
-# Flood nationally
-usa_flood_df <- noaa_clean%>%
-  filter(EVCAT=="FLOOD",
-         !(STATE %in% c("AK", "HI")))%>%
-  group_by(FIPS)%>%
-  summarise(value=log(sum(PROPDMG_TOT) + 1))
-
-names(usa_flood_df)[1] <- "region"
-
-usa_flood_chrplth <- CountyChoropleth$new(usa_flood_df)
-usa_flood_chrplth$set_num_colors(5)
-usa_flood_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-zoom_states <- tolower(state.name)[-c(2, 11)]
-
-usa_flood_chrplth$set_zoom(zoom_states)
-
-usa_flood_plot <- usa_flood_chrplth$render_with_reference_map()
-
-usa_flood_plot
-
-# Hurricane nationally
-usa_hurr_df <- noaa_clean%>%
-  filter(EVCAT=="HURRICANE",
-         !(STATE %in% c("AK", "HI")))%>%
-  group_by(FIPS)%>%
-  summarise(value=log(sum(PROPDMG_TOT) + 1))
-
-names(usa_hurr_df)[1] <- "region"
-
-usa_hurr_chrplth <- CountyChoropleth$new(usa_hurr_df)
-usa_hurr_chrplth$set_num_colors(5)
-usa_hurr_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-zoom_states <- tolower(state.name)[-c(2, 11)]
-
-usa_hurr_chrplth$set_zoom(zoom_states)
-
-usa_hurr_plot <- usa_hurr_chrplth$render_with_reference_map()
-
-usa_hurr_plot
-
-# Tornado nationally
-usa_tornado_df <- noaa_clean%>%
-  filter(EVCAT=="TORNADO",
-         !(STATE %in% c("AK", "HI")))%>%
-  group_by(FIPS)%>%
-  summarise(value=log(sum(PROPDMG_TOT) + 1))
-
-names(usa_tornado_df)[1] <- "region"
-
-usa_tornado_chrplth <- CountyChoropleth$new(usa_tornado_df)
-usa_tornado_chrplth$set_num_colors(5)
-usa_tornado_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-zoom_states <- tolower(state.name)[-c(2, 11)]
-
-usa_tornado_chrplth$set_zoom(zoom_states)
-
-usa_tornado_plot <- usa_tornado_chrplth$render_with_reference_map()
-
-usa_tornado_plot
-
-# Cold nationally
-usa_hail_df <- noaa_clean%>%
-  filter(EVCAT=="HAIL",
-         !(STATE %in% c("AK", "HI")))%>%
-  group_by(FIPS)%>%
-  summarise(value=log(sum(CROPDMG_TOT) + 1))
-
-names(usa_hail_df)[1] <- "region"
-
-usa_hail_chrplth <- CountyChoropleth$new(usa_hail_df)
-usa_hail_chrplth$set_num_colors(5)
-usa_hail_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-zoom_states <- tolower(state.name)[-c(2, 11)]
-
-usa_hail_chrplth$set_zoom(zoom_states)
-
-usa_hail_plot <- usa_hail_chrplth$render_with_reference_map()
-
-usa_hail_plot
-
-
-#Thunderstorms
-usa_tstorms_df <- noaa_clean%>%
-  filter(EVCAT=="THUNDERSTORM",
-         !(STATE %in% c("AK", "HI")))%>%
-  group_by(FIPS)%>%
-  summarise(value=log(sum(CROPDMG_TOT) + 1))
-
-names(usa_tstorms_df)[1] <- "region"
-
-usa_tstorms_chrplth <- CountyChoropleth$new(usa_tstorms_df)
-usa_tstorms_chrplth$set_num_colors(5)
-usa_tstorms_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-zoom_states <- tolower(state.name)[-c(2, 11)]
-
-usa_tstorms_chrplth$set_zoom(zoom_states)
-
-usa_tstorms_plot <- usa_tstorms_chrplth$render_with_reference_map()
-
-usa_tstorms_plot
-
-
-# heat_dry
-usa_heat_df <- noaa_clean%>%
-  filter(EVCAT=="HEAT_DRY",
-         !(STATE %in% c("AK", "HI")))%>%
-  group_by(FIPS)%>%
-  summarise(value=log(sum(CROPDMG_TOT) + 1))
-
-names(usa_heat_df)[1] <- "region"
-
-usa_heat_chrplth <- CountyChoropleth$new(usa_heat_df)
-usa_heat_chrplth$set_num_colors(5)
-usa_heat_chrplth$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-zoom_states <- tolower(state.name)[-c(2, 11)]
-
-usa_heat_chrplth$set_zoom(zoom_states)
-
-usa_heat_plot <- usa_heat_chrplth$render_with_reference_map()
-
-usa_heat_plot
-
-```
-
-
-
-```{r warning=FALSE}
-# summarize data for test plot
-katrina_wind <- noaa_clean%>%
-  filter(BGN_DATE >= as.Date("2005-08-22") &
-         END_DATE <= as.Date("2005-09-01") &
-         EVCAT=="WIND")%>%
-  group_by(STATENAME)%>%
-  summarise(value=log(sum(PROPDMG_TOT)+1))
-
-names(katrina_wind)[1] <- "region"
-
-
-# test plot of FIPS data
-katrina_wind <- StateChoropleth$new(katrina_wind)
-katrina_wind$set_num_colors(5)
-katrina_wind$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", guide = FALSE)
-katrina_wind$set_zoom(c("alabama", "louisiana", "mississippi", "tennessee", "kentucky"))
-
-
-
-kat_plt2 <- katrina_wind$render_with_reference_map()+
-  geom_path(data=kat_path, mapping=aes(lon*-1, lat), size=2, color="grey50",
-            linetype=2, alpha=.5, show.legend = FALSE)+
-  labs(caption="Wind Related")+
-  theme(plot.caption = element_text(hjust = 0.5, size = 14))
-```
-
-```{r, message=FALSE, warning=FALSE}
-library(gridExtra)
-library(grid)
-grid.arrange(kat_plt1, kat_plt2, ncol=2, 
-             top=textGrob(
-               "Relative Material Damage by State of Hurricane Katrina",
-               gp=gpar(fontsize=16,font=3)))
 ```
 
 
@@ -579,102 +398,41 @@ af_sts <- c("alabama",  "connecticut", "delaware", "florida", "georgia",
                     "north carolina", "pennsylvania", "south carolina",
                     "tennessee", "vermont", "virginia", "west virginia")
 
-# summarize data for test plot
-blizzard_93_flood <- noaa_clean%>%
+```
+
+```{r}
+# Summarize Blizzard of 1993 Damages
+blizzard_93_facet <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("1993-03-11") & 
            BGN_DATE <= as.Date("1993-03-15") &
-           STATENAME %in% af_sts &
-           EVCAT=="FLOOD")%>%
-  group_by(STATENAME)%>%
-  summarise(value=log(sum(PROPDMG_TOT)+1))
+           !(EVCAT %in% c("HURRICANE", "LIGHTNING")) &
+           STATENAME %in% af_sts)%>%
+  group_by(STATENAME, EVCAT)%>%
+  summarise(value=log(sum(PROPDMG_TOT) + sum(CROPDMG_TOT) + 1))
 
-names(blizzard_93_flood)[1] <- "region"
+names(blizzard_93_facet)[1] <- "region" 
 
+states_map <- map_data("state", region = af_sts)
 
-# test plot of FIPS data
-blizzard_93_flood <- StateChoropleth$new(blizzard_93_flood)
-blizzard_93_flood$set_num_colors(9)
-blizzard_93_flood$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", 
-                                                    guide = FALSE)
-blizzard_93_flood$set_zoom(af_sts) 
-blz_93_plt1 <- blizzard_93_flood$render_with_reference_map()
+ggplot(blizzard_93_facet, aes(map_id = region)) + 
+    geom_map(data=states_map, map = states_map, color="black", fill=NA)+
+    geom_map(aes(fill = value), color="black", map = states_map) +
+    scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
+    expand_limits(x = states_map$long, y = states_map$lat)+
+    facet_wrap(~EVCAT)+
+    theme(axis.ticks=element_blank(), 
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.line = element_blank(),
+          legend.background = element_blank(),
+          legend.key = element_blank(),
+          panel.grid = element_blank(),
+          strip.background = element_blank())
+
 
 ```
 
-```{r message=FALSE, warning=FALSE}
-# summarize data for test plot
-blizzard_93_wind <- noaa_clean%>%
-  filter(BGN_DATE >= as.Date("1993-03-11") & 
-           BGN_DATE <= as.Date("1993-03-15") &
-           STATENAME %in% af_sts &
-           EVCAT=="WIND")%>%
-  group_by(STATENAME)%>%
-  summarise(value=log(sum(PROPDMG_TOT)+1))
 
-names(blizzard_93_wind)[1] <- "region"
-
-
-# test plot of FIPS data
-blizzard_93_wind <- StateChoropleth$new(blizzard_93_wind)
-blizzard_93_wind$set_num_colors(9)
-blizzard_93_wind$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", 
-                                                    guide = FALSE)
-blizzard_93_wind$set_zoom(af_sts) 
-blz_93_plt2 <- blizzard_93_wind$render_with_reference_map()
-```
-
-
-```{r message=FALSE, warning=FALSE}
-# summarize data for test plot
-blizzard_93_snow <- noaa_clean%>%
-  filter(BGN_DATE >= as.Date("1993-03-11") & 
-           BGN_DATE <= as.Date("1993-03-15") &
-           STATENAME %in% af_sts &
-           EVCAT=="SNOW")%>%
-  group_by(STATENAME)%>%
-  summarise(value=log(sum(PROPDMG_TOT)+1))
-
-names(blizzard_93_snow)[1] <- "region"
-
-
-# test plot of FIPS data
-blizzard_93_snow <- StateChoropleth$new(blizzard_93_snow)
-blizzard_93_snow$set_num_colors(9)
-blizzard_93_snow$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", 
-                                                    guide = FALSE)
-blizzard_93_snow$set_zoom(af_sts) 
-blz_93_plt3 <- blizzard_93_snow$render_with_reference_map()
-```
-
-```{r message=FALSE, warning=FALSE}
-# summarize data for test plot
-blizzard_93_tor <- noaa_clean%>%
-  filter(BGN_DATE >= as.Date("1993-03-11") & 
-           BGN_DATE <= as.Date("1993-03-15") &
-           STATENAME %in% af_sts &
-           EVCAT=="TORNADO")%>%
-  group_by(STATENAME)%>%
-  summarise(value=log(sum(PROPDMG_TOT)+1))
-
-names(blizzard_93_tor)[1] <- "region"
-
-
-# test plot of FIPS data
-blizzard_93_tor <- StateChoropleth$new(blizzard_93_tor)
-blizzard_93_tor$set_num_colors(9)
-blizzard_93_tor$ggplot_scale <- scale_fill_brewer(palette = "YlOrRd", 
-                                                    guide = FALSE)
-blizzard_93_tor$set_zoom(af_sts) 
-blz_93_plt4 <- blizzard_93_tor$render_with_reference_map()
-```
-
-```{r, message=FALSE, warning=FALSE}
-grid.arrange(blz_93_plt1, blz_93_plt2, ncol=2, 
-             top=textGrob(
-               "Relative Material Damage by State of Blizzard of 1993",
-               gp=gpar(fontsize=16,font=3)))
-
-```
 
 __Step 6:__ Next, the data was grouped by category, and counts for fatalities and injuries were calculated. 
 
@@ -734,103 +492,6 @@ __Step 12:__
 
 
 
-```{r echo=FALSE}
-
-```
-
-```{r echo=FALSE}
-# subset data on those observations that use Public Forecast Zones
-noaa_pfz <- subset(noaa_clean, grepl("^[A-Z]{2}Z[0-9]{3}", COUNTYNAME))
-
-# Reformat COUNTYNAME variable to space separated string of zone numbers
-process_pfzs <- function(zs){
-  zones <- c()
-  prelim <- gsub("/", " ", zs)
-  prelim <- gsub("[,;]", "-", prelim)
-  if(!grepl("-", prelim)) prelim <- gsub(" ",  "-", prelim)
-  prelim <- gsub("(\\d)\\s+(\\d)", "\\1 - \\2", prelim)
-  
-  prelim <- gsub("^[A-Z]{3}", "", prelim)%>%
-    strsplit(split="-")%>%
-    unlist%>%
-    stri_trim_both()
-  
-  for(each in prelim){
-
-    if(length(each) < 1) next
-    
-    if(grepl("[[:alpha:]]", each)) next
-    
-    if(grepl(">", each)){
-      temp <- unlist(strsplit(split=">", each))
-      temp <- temp[temp != ""]
-      if(length(temp) < 2){
-        zones <- c(zones, temp)
-        next
-      }
-      
-      start <- temp[[1]]
-      stop <- temp[[2]]
-
-      if(nchar(stop)==4 & substr(stop, 1, 1) == "0"){
-        stop <- substr(stop, 2, 4)
-      }
-      
-      if(nchar(start)>3 & nchar(start) %% 3 == 0){
-        sst <- substring(start, 
-                         seq(1, nchar(start)-1, 3), 
-                         seq(3, nchar(start), 3))
-        start <- sst[length(sst)]
-        for(s in sst[1:length(sst)-1]){
-          if(s != start) zones <- c(zones, s)
-        }
-          }
-      if(nchar(stop)>3 & nchar(stop) %% 3 == 0){
-        sst <- substring(stop, 
-                         seq(1, nchar(stop)-1, 3), 
-                         seq(3, nchar(stop), 3))
-        stop <- sst[1]
-        for(s in sst[2:length(sst)]){
-          if(s != stop) zones <- c(zones, s)
-
-        }
-          }
-            
-      zones <- c(zones, as.integer(start):as.integer(stop))}
-    else{zones <- c(zones, each)}}
-  zones <- paste(zones, collapse=" ")
-  return(zones)
-}
-
-
-
-noaa_kat <- noaa_clean%>%
-  filter(BGN_DATE >= as.Date("2005-08-22") &
-         BGN_DATE <= as.Date("2005-09-01") &
-         STATE %in% c('AL', 'LA', 'MS', 'KY', 'TN', 'FL') &
-         grepl("Katrina", noaa_clean$REMARKS))
-
-noaa_kat_pfz <- subset(noaa_kat, grepl("^[A-Z]{2}Z[0-9]{3}", COUNTYNAME))
-
-noaa_kat_pfz2 <- noaa_kat_pfz%>%mutate(PFZ=sapply(COUNTYNAME, process_pfzs))
-
-noaa_kat_pfz3 <- cSplit(noaa_kat_pfz2, c("PFZ"), sep=" ", direction="long",
-                        drop = FALSE)
-noaa_kat_pfz3$PFZ <- sapply(noaa_kat_pfz3$PFZ, 
-                            function(x){
-                              paste0(paste0(rep("0", 3-nchar(x)), 
-                                            collapse = ""), x)})
-
-noaa_kat_pfz3$id <- with(noaa_kat_pfz3, paste0(STATE, PFZ))
-
-noaa_kat_pfz4 <- subset(noaa_kat_pfz3, PROPDMG_TOT > 0)
-
-test <- left_join(pfz_kat2, noaa_kat_pfz4)
-
-ggplot(test)+geom_polygon(aes(x=long, y=lat, group=group, fill=log(PROPDMG_TOT)), color="black", alpha=0.3)+scale_fill_continuous(low="yellow", high="red", na.value = "grey90")
-
-
-```
 
 
 What stood out most in the analysis of the casualties and damages data was incredibly high material cost associated with severe weather, both summatively and by individual event category. I was incredulous (and still am to some degree) with the summaries the analysis produced since the aggregate annual damages sometimes reach into the trillions of dollars.
