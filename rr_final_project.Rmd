@@ -14,11 +14,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Synopsis
 
-The U.S. National Oceanic and Atmospheric Administration's (NOAA) Severe Weather dataset tracks extreme weather events in the United States and includes estimates of casualties and property damage. The report will focus on these features of the dataset by compiling similar events types for the purpose of ranking the resulting categories by consequential human casualties and material damage. 
+The U.S. National Oceanic and Atmospheric Administration's (NOAA) Severe Weather dataset tracks extreme weather events in the United States and includes in the summative data for each event estimates of casualties and property damage. This report will focus on these two features of the dataset by compiling similar events types for the purpose of ranking the resulting categories by consequential human casualties and material damage. 
 
-The data themselves required extensive cleaning and reformatting. As mentioned and mos notably, the wide-ranging weather event types were gathered into general categories based on similar characteristics such as temperature, percipitation type, storm variety or variations in event naming. The result were more interpretable data that I think supported more meaningful and interpretable descriptions of the data.
+The data themselves required extensive cleaning and reformatting. The wide-ranging weather event types and naming variations were gathered into general categories based on similar characteristics such as temperature, percipitation type and storm variety. The results I think supported more meaningful and interpretable descriptions of the data.
 
-While all event categories registered significant impacts, the events that caused the greatest loss in both terms of life and property were hurricanes, tornados and flooding. Data recording conventions further complicated the data. Some event types are characterized by multiple weather features, such as hurricanes the effects of which are often recorded in the dataset by weather features such as wind or flood. To compensate for this and accurately reflect the casualties and damages caused by a single storm events other variables were harnessed to group the data according to event.    
+While all event categories registered significant impacts, the events that caused the greatest loss in both terms of life and property were hurricanes, tornados and flooding. Data recording conventions further complicated the data. Some event types are characterized by multiple weather features, such as hurricanes the effects of which are often recorded in the dataset by weather features such as wind or flood. To compensate for this and accurately reflect the casualties and damages caused by a single storm events other variables were harnessed to group the data according to event. (9 sentences) 
 
 
 ## Data Processing & Exploratory Analysis
@@ -345,7 +345,6 @@ The distributions are extremely skewed toward higher values. Most weather events
 
 Plotting the casualties and damages by event category over time visually demonstrates that the vast bulk of human and material damages are owed to super storms.  
 
-__Step 6:__ Next, the data was grouped by category, and counts for fatalities and injuries were calculated. 
 
 ```{r}
 # group data by EVCAT and get total fatalities, injuries for each category
