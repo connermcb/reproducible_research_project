@@ -387,7 +387,7 @@ ggplot(smry_dmgs)+
 
 To gain further some insight into how events are categorized in the dataset by their features instead of their broader categorical names, individual storms will be focused on. 
 
-```{r fig.align='center', fig.height=5, fig.width=9}
+```{r fig.align='center', fig.height=5, fig.width=8}
 # Create vectory of states affected by Hurricane Katrina
 af_sts_kat <- c('alabama', 'louisiana', 'mississippi', 
                 'kentucky', 'tennessee', 'florida',
@@ -427,6 +427,7 @@ ggplot(katrina_dmgs, aes(map_id = region)) +
           legend.background = element_blank(),
           legend.key = element_blank(),
           panel.grid = element_blank(),
+          plot.title = element_text(hjust = 0.5),
           strip.background = element_blank())
 
 
@@ -444,7 +445,7 @@ af_sts <- c("alabama",  "connecticut", "delaware", "florida", "georgia",
 
 ```
 
-```{r fig.align='center', fig.height=5, fig.width=9}
+```{r fig.align='center', fig.height=5, fig.width=8}
 # Summarize Blizzard of 1993 Damages
 blizzard_93_facet <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("1993-03-11") & 
@@ -475,6 +476,7 @@ ggplot(blizzard_93_facet, aes(map_id = region)) +
           legend.background = element_blank(),
           legend.key = element_blank(),
           panel.grid = element_blank(),
+          plot.title = element_text(hjust = 0.5),
           strip.background = element_blank())
 
 
