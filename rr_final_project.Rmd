@@ -357,8 +357,8 @@ smry_fatals <- noaa_clean%>%
 
 ggplot(smry_fatals)+
   geom_line(aes(x=YEAR, y=value, color=variable))+
+  ggtitle("Fatalities and Injuries by Event Category")+
   facet_wrap(~EVCAT)+
-  labs(title="Fatalities and Injuries by Event Category")+
   theme(axis.text.x = element_text(angle=75, hjust=1))
 
 ```
@@ -369,7 +369,7 @@ The plots clearly show that historically rare super events in the hurricane, tor
 
 
 
-```{r}
+```{r fig.align='center', fig.height=4, fig.width=6}
 # Group data by event category and year, summarize by property and crop totals
 smry_dmgs <- noaa_clean%>%
   filter(YEAR > 1990)%>%
@@ -379,15 +379,15 @@ smry_dmgs <- noaa_clean%>%
 
 ggplot(smry_dmgs)+
   geom_line(aes(x=YEAR, y=tot_prop+tot_crop))+
-  facet_wrap(~EVCAT)+
   labs(title="Combined Property and Crop Damages by Event Category")+
+  facet_wrap(~EVCAT)+
   theme(axis.text.x = element_text(angle=75, hjust=1))
 ```
 
 
 To gain further some insight into how events are categorized in the dataset by their features instead of their broader categorical names, individual storms will be focused on. 
 
-```{r}
+```{r fig.align='center', fig.height=5, fig.width=9}
 # Create vectory of states affected by Hurricane Katrina
 af_sts_kat <- c('alabama', 'louisiana', 'mississippi', 
                 'kentucky', 'tennessee', 'florida',
@@ -419,7 +419,7 @@ ggplot(katrina_dmgs, aes(map_id = region)) +
     scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
     expand_limits(x = states_map$long, y = states_map$lat)+
     facet_wrap(~EVCAT)+
-    labs(Title="Hurricane Katrina State Level Damages by Event Category")+
+    labs(title="Hurricane Katrina State Level Damages by Event Category")+
     theme(axis.ticks=element_blank(), 
           axis.text = element_blank(),
           axis.title = element_blank(),
@@ -444,7 +444,7 @@ af_sts <- c("alabama",  "connecticut", "delaware", "florida", "georgia",
 
 ```
 
-```{r}
+```{r fig.align='center', fig.height=5, fig.width=9}
 # Summarize Blizzard of 1993 Damages
 blizzard_93_facet <- noaa_clean%>%
   filter(BGN_DATE >= as.Date("1993-03-11") & 
@@ -464,7 +464,7 @@ states_map <- map_data("state", region = af_sts)
 ggplot(blizzard_93_facet, aes(map_id = region)) + 
     geom_map(data=states_map, map = states_map, color="black", fill=NA)+
     geom_map(aes(fill = value), color="black", map = states_map) +
-  labs(Title="Blizzard of 1993 State Level Damages by Event Category")+
+    labs(title="Blizzard of 1993 State Level Damages by Event Category")+
     scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
     expand_limits(x = states_map$long, y = states_map$lat)+
     facet_wrap(~EVCAT)+
