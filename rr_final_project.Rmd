@@ -2,9 +2,9 @@
 title: "Health & Economic Outcomes of Severe Weather Events"
 author: "C. McBride"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -358,7 +358,7 @@ smry_fatals <- noaa_clean%>%
 ggplot(smry_fatals)+
   geom_line(aes(x=YEAR, y=value, color=variable))+
   facet_wrap(~EVCAT)+
-  labs(title="Fatalities and Injuries by Event Category")
+  labs(title="Fatalities and Injuries by Event Category")+
   theme(axis.text.x = element_text(angle=75, hjust=1))
 
 ```
