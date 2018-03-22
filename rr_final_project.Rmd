@@ -329,7 +329,7 @@ perf_storms <- rbind(katrina, joplin, blizzard_93, camille)%>%
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 # summary table of event categories frequency for four super storms
-kable(perf_storms, caption="Observations Attributable to Super-Storms by Catalogues Event Category")
+kable(perf_storms, caption="Observations Attributable to Super-Storms by Event Category")
 ```
 
 As is clear in the table, the effects of a storm are summarized by storm feature not exclusively by storm category or type. For example, a relatively low proportion of observations attributable to Hurricane Katrina were actually catalogued under hurricane. The table shows that observations were usually listed under the most destructive feature such as wind and flooding. 
@@ -422,7 +422,7 @@ ggplot(katrina_dmgs, aes(map_id = region)) +
     scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
     expand_limits(x = states_map$long, y = states_map$lat)+
     facet_wrap(~EVCAT)+
-  labs(Title="Hurricane Katrina State Level Damages by Event Category")
+  labs(Title="Hurricane Katrina State Level Damages by Event Category")+
     theme(axis.ticks=element_blank(), 
           axis.text = element_blank(),
           axis.title = element_blank(),
@@ -468,10 +468,10 @@ states_map <- map_data("state", region = af_sts)
 ggplot(blizzard_93_facet, aes(map_id = region)) + 
     geom_map(data=states_map, map = states_map, color="black", fill=NA)+
     geom_map(aes(fill = value), color="black", map = states_map) +
+  labs(Title="Blizzard of 1993 State Level Damages by Event Category")+
     scale_fill_continuous(low="yellow", high="red", guide = FALSE) + 
     expand_limits(x = states_map$long, y = states_map$lat)+
     facet_wrap(~EVCAT)+
-  labs(Title="Blizzard of 1993 State Level Damages by Event Category")
     theme(axis.ticks=element_blank(), 
           axis.text = element_blank(),
           axis.title = element_blank(),
